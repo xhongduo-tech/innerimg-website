@@ -63,6 +63,10 @@ npm run dev
 
 数据卷 **`innerimg_data`** 持久化 **`/app/data`**（SQLite 与上传文件）。停止：`docker compose down`（卷默认保留）。
 
+#### 离线 / 内网（U 盘拷贝、无外网）
+
+在联网笔记本上打包镜像与编排文件，拷贝到**不通外网**的服务器上 `docker load` 后启动，见 **[docs/OFFLINE_DEPLOY.md](docs/OFFLINE_DEPLOY.md)**。快捷命令：`./scripts/pack-offline-bundle.sh`。
+
 #### 仅 Docker 单容器（不用 Compose / 不用 Nginx）
 
 ```bash

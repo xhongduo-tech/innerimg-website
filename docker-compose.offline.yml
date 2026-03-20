@@ -1,0 +1,11 @@
+# 内网离线使用：与 docker-compose.yml 一起加载，禁止 pull、不在内网执行 build。
+# 启动：docker compose -f docker-compose.yml -f docker-compose.offline.yml up -d
+#
+# 要求：已在内网机执行 docker load 导入 innerimg:latest 与 nginx:1.27-alpine
+
+services:
+  innerimg:
+    build: null
+    pull_policy: never
+  nginx:
+    pull_policy: never

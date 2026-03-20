@@ -6,3 +6,6 @@ server/data
 *.log
 .env
 .env.local
+
+offline-bundle/
+*.tar
