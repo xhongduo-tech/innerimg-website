@@ -1,0 +1,18 @@
+services:
+  innerimg:
+    build: .
+    image: innerimg:latest
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:3000}
+      MAX_FILE_MB: ${MAX_FILE_MB:-20}
+      MAX_BATCH_FILES: ${MAX_BATCH_FILES:-200}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-200}
+      RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-1 minute}
+    volumes:
+      - innerimg_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  innerimg_data:

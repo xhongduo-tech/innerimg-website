@@ -42,13 +42,36 @@ npm run dev
 
 打开 `http://127.0.0.1:5173`，API 经代理指向本机 3000 端口。
 
-### 3. 生产构建（前端静态资源）
+### 3. Docker 一体镜像（前端 + API + 静态资源）
+
+镜像内会先构建 `web`，再编译 `server`，运行时由 Fastify 同时托管 **`/` 前端**、`/api` **接口**与 **`/files/` 上传目录**。
+
+```bash
+# 构建
+docker build -t innerimg .
+
+# 运行（务必设置公网可访问的根地址，供生成完整图片 URL）
+docker run --rm -p 3000:3000 \
+  -e PUBLIC_BASE_URL=https://你的域名 \
+  -v innerimg-data:/app/data \
+  innerimg
+```
+
+或使用 Compose（默认 `PUBLIC_BASE_URL=http://localhost:3000`，公网部署请在本机创建 `.env` 覆盖）：
+
+```bash
+docker compose up -d --build
+```
+
+数据卷 `innerimg_data` 持久化 `/app/data`（SQLite 与上传文件）。多副本水平扩展时请勿共用 SQLite 写入，应换共享对象存储与独立数据库，见上文「架构与扩展」。
+
+### 4. 生产构建（仅静态资源，自建网关时）
 
 ```bash
 cd web && npm run build
 ```
 
-可将 `web/dist` 交给 Nginx，或将 `dist` 挂到 CDN；`/api` 与 `/files` 反代至同一 Fastify 服务或拆分文件网关。
+可将 `web/dist` 交给 Nginx；若由本服务托管静态资源，设置环境变量 **`WEB_DIST`** 指向构建目录即可（Docker 镜像已内置为 `/app/web/dist`）。
 
 ## 环境变量
 

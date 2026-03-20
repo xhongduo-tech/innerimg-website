@@ -54,11 +54,6 @@ await app.register(multipart, {
     files: maxBatchFiles + 5,
   },
 });
-await app.register(fastifyStatic, {
-  root: uploadDir,
-  prefix: "/files/",
-  decorateReply: false,
-});
 
 function fullUrlForStoredFile(storedPath: string) {
   const rel = storedPath.split(path.sep).join("/");
@@ -280,13 +275,52 @@ app.post("/api/upload/batch", async (req, reply) => {
   return { count: results.length, items: results };
 });
 
+await app.register(fastifyStatic, {
+  root: uploadDir,
+  prefix: "/files/",
+  decorateReply: false,
+});
+
+const webDistRaw = process.env.WEB_DIST?.trim();
+const webDist =
+  webDistRaw && fs.existsSync(path.join(webDistRaw, "index.html"))
+    ? path.resolve(webDistRaw)
+    : null;
+
+if (webDist) {
+  await app.register(fastifyStatic, {
+    root: webDist,
+    prefix: "/",
+    decorateReply: false,
+  });
+  app.setNotFoundHandler(async (req, reply) => {
+    if (req.method !== "GET") {
+      return reply.code(404).send({ error: "not found" });
+    }
+    const p = (req.url.split("?")[0] ?? "").split("#")[0];
+    if (
+      p.startsWith("/api") ||
+      p.startsWith("/files/") ||
+      p === "/files" ||
+      p === "/health"
+    ) {
+      return reply.code(404).send({ error: "not found" });
+    }
+    const html = await fs.promises.readFile(
+      path.join(webDist, "index.html"),
+      "utf8"
+    );
+    return reply.type("text/html").send(html);
+  });
+}
+
 const port = Number(process.env.PORT || 3000);
 const host = process.env.HOST || "0.0.0.0";
 
 try {
   await app.listen({ port, host });
   app.log.info(
-    { publicBaseUrl, uploadDir, dbPath },
+    { publicBaseUrl, uploadDir, dbPath, webDist },
     "InnerImg server listening"
   );
 } catch (err) {
