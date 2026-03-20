@@ -42,30 +42,58 @@ npm run dev
 
 打开 `http://127.0.0.1:5173`，API 经代理指向本机 3000 端口。
 
-### 3. Docker 部署（推荐：最少操作）
+### 3. Docker 部署
 
-镜像为 **单阶段** 构建（先 `web` 再 `server`，一条 Dockerfile 看完），目标平台固定为 **`linux/amd64`（x86_64）**：在 **Mac（含 M 系列）** 上构建时 Docker 会做模拟/跨平台构建，产出可在常见 **x86 云主机** 直接运行；`docker-compose.yml` 里已写 `platform: linux/amd64`。
+镜像为 **单阶段**（Dockerfile 内先构建 `web` 再编译 `server`），目标平台 **`linux/amd64`**，与 `docker-compose.yml` 中 `platform` 一致。在 **Mac（含 M 系列）** 上打 x86 镜像时可能较慢，属正常。
 
-**并发说明（是否一定要 Nginx？）**  
-- **不需要 Nginx 也能多用户并发**：Node/Fastify 是异步 I/O，单进程可同时处理大量连接与上传。  
-- **本仓库 Compose 默认仍带 Nginx**：作为统一入口，便于调大上传体积、超时、HTTPS（可自行在前端加证书）、以及将来在 `upstream` 里挂**多台**应用做横向扩展。仅扩副本时须改用共享存储并替换 SQLite，见下文「架构与扩展」。
+**并发说明**  
+- **多用户并发不依赖 Nginx**：Fastify/Node 异步 I/O，单进程即可支撑大量连接。  
+- **Compose 默认带 Nginx**：统一入口、上传体积与超时、后续可扩 `upstream`；多副本需共享存储并替换 SQLite，见「架构与扩展」。
 
-#### 操作步骤（复制即用）
+#### 你是不是「只执行 pack 就行」？
 
-1. **安装** [Docker Desktop](https://www.docker.com/products/docker-desktop/)（Mac 上安装后启动一次）。
-2. **进入项目根目录**（含 `Dockerfile`、`docker-compose.yml` 的目录）。
-3. **（可选）** 复制环境变量示例并修改对外地址（影响生成的图片 URL）：  
-   `cp .env.compose.example .env`  
-   编辑 `PUBLIC_BASE_URL`（例如本机访问为 `http://localhost:3000`；若前有域名/HTTPS 则写真实入口）。
-4. **启动**：  
-   `docker compose up -d --build`
-5. **浏览器打开**：`http://localhost:3000`（端口由 `.env` 里的 `PORT` 控制，默认 3000；流量路径为 **浏览器 → Nginx → 应用**）。
+**不是。** 请先判断服务器能否访问互联网：
 
-数据卷 **`innerimg_data`** 持久化 **`/app/data`**（SQLite 与上传文件）。停止：`docker compose down`（卷默认保留）。
+| 场景 | 要不要执行 `scripts/pack-offline-bundle.sh` | 你需要做的事 |
+|------|---------------------------------------------|--------------|
+| **服务器能上网** | **不要执行**（多此一举） | 在服务器上拿到本仓库后：`cp .env.compose.example .env`（按需改 `PUBLIC_BASE_URL`）→ `docker compose up -d --build` → 浏览器访问对应地址。 |
+| **服务器不能上网（U 盘离线）** | **要执行**——但 **只在联网笔记本上执行一次**，用于生成搬运包 | **笔记本**：`chmod +x scripts/pack-offline-bundle.sh` → `./scripts/pack-offline-bundle.sh` → 把整个 **`offline-bundle/`** 拷到 U 盘。**内网服务器**：`docker load -i innerimg-docker-images-*.tar` → 进入该目录配置 `.env` → `docker compose -f docker-compose.yml -f docker-compose.offline.yml up -d`。 |
 
-#### 离线 / 内网（U 盘拷贝、无外网）
+一句话：**Pack = 离线发货前的打包脚本**；联网部署请直接用 **Compose 构建**，不必 pack。
 
-在联网笔记本上打包镜像与编排文件，拷贝到**不通外网**的服务器上 `docker load` 后启动，见 **[docs/OFFLINE_DEPLOY.md](docs/OFFLINE_DEPLOY.md)**。快捷命令：`./scripts/pack-offline-bundle.sh`。
+---
+
+#### 路线 A：服务器能联网
+
+1. 安装 [Docker Desktop](https://www.docker.com/products/docker-desktop/)（或 Linux：Docker Engine + Compose 插件）。
+2. 进入本仓库**根目录**。
+3. （建议）`cp .env.compose.example .env`，编辑 **`PUBLIC_BASE_URL`** 为最终用户浏览器里的根地址（含端口；决定生成的图片 URL）。
+4. `docker compose up -d --build`
+5. 打开 `PUBLIC_BASE_URL`（默认 `http://localhost:3000`；映射端口看 `.env` 里 `PORT`）。路径：**浏览器 → Nginx → 应用**。
+
+数据在卷 **`innerimg_data`**（`/app/data`）。停止：`docker compose down`（卷默认保留）。
+
+---
+
+#### 路线 B：纯内网 / U 盘（离线）
+
+**联网笔记本：**
+
+1. `chmod +x scripts/pack-offline-bundle.sh`
+2. `./scripts/pack-offline-bundle.sh`  
+   得到 **`offline-bundle/`**（含镜像 `*.tar`、`docker-compose.yml`、`docker-compose.offline.yml`、`nginx/`、`.env.compose.example`）。
+3. 将 **`offline-bundle/` 整目录**拷到 U 盘（可选对 `*.tar` `gzip` 以缩小体积）。
+
+**内网服务器：**
+
+1. 从 U 盘复制 `offline-bundle/` 到服务器并 `cd` 进入。
+2. `docker load -i innerimg-docker-images-*.tar`
+3. `cp .env.compose.example .env`，将 **`PUBLIC_BASE_URL`** 设为内网真实访问地址（如 `http://10.0.0.5:3000`）。
+4. `docker compose -f docker-compose.yml -f docker-compose.offline.yml up -d`（**必须带 `docker-compose.offline.yml`**，避免内网 pull/build）。
+
+更多备忘与单容器无 Nginx 备选见 **[docs/OFFLINE_DEPLOY.md](docs/OFFLINE_DEPLOY.md)**。
+
+---
 
 #### 仅 Docker 单容器（不用 Compose / 不用 Nginx）
 
@@ -78,7 +106,7 @@ docker run --rm -p 3000:3000 \
   innerimg
 ```
 
-此时直接访问容器内 Fastify，无 Nginx；上传大小等需自行在网关或应用中控制。
+此时直接访问容器内 Fastify，无 Nginx；上传大小等需在应用环境变量或别处控制。
 
 ### 4. 生产构建（仅静态资源，自建网关时）
 
