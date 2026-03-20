@@ -13,11 +13,11 @@ RUN cd web && npm ci
 COPY web ./web
 RUN cd web && npm run build
 
-# 后端（生产依赖 + 编译）
+# 后端：编译阶段需要 devDependencies（typescript / tsc），编译后再删掉以缩小镜像
 COPY server/package.json server/package-lock.json ./server/
-RUN cd server && npm ci --omit=dev
+RUN cd server && npm ci
 COPY server ./server
-RUN cd server && npm run build
+RUN cd server && npm run build && npm prune --omit=dev
 
 ENV NODE_ENV=production
 ENV WEB_DIST=/app/web/dist
