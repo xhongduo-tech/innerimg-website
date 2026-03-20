@@ -42,28 +42,39 @@ npm run dev
 
 打开 `http://127.0.0.1:5173`，API 经代理指向本机 3000 端口。
 
-### 3. Docker 一体镜像（前端 + API + 静态资源）
+### 3. Docker 部署（推荐：最少操作）
 
-镜像内会先构建 `web`，再编译 `server`，运行时由 Fastify 同时托管 **`/` 前端**、`/api` **接口**与 **`/files/` 上传目录**。
+镜像为 **单阶段** 构建（先 `web` 再 `server`，一条 Dockerfile 看完），目标平台固定为 **`linux/amd64`（x86_64）**：在 **Mac（含 M 系列）** 上构建时 Docker 会做模拟/跨平台构建，产出可在常见 **x86 云主机** 直接运行；`docker-compose.yml` 里已写 `platform: linux/amd64`。
+
+**并发说明（是否一定要 Nginx？）**  
+- **不需要 Nginx 也能多用户并发**：Node/Fastify 是异步 I/O，单进程可同时处理大量连接与上传。  
+- **本仓库 Compose 默认仍带 Nginx**：作为统一入口，便于调大上传体积、超时、HTTPS（可自行在前端加证书）、以及将来在 `upstream` 里挂**多台**应用做横向扩展。仅扩副本时须改用共享存储并替换 SQLite，见下文「架构与扩展」。
+
+#### 操作步骤（复制即用）
+
+1. **安装** [Docker Desktop](https://www.docker.com/products/docker-desktop/)（Mac 上安装后启动一次）。
+2. **进入项目根目录**（含 `Dockerfile`、`docker-compose.yml` 的目录）。
+3. **（可选）** 复制环境变量示例并修改对外地址（影响生成的图片 URL）：  
+   `cp .env.compose.example .env`  
+   编辑 `PUBLIC_BASE_URL`（例如本机访问为 `http://localhost:3000`；若前有域名/HTTPS 则写真实入口）。
+4. **启动**：  
+   `docker compose up -d --build`
+5. **浏览器打开**：`http://localhost:3000`（端口由 `.env` 里的 `PORT` 控制，默认 3000；流量路径为 **浏览器 → Nginx → 应用**）。
+
+数据卷 **`innerimg_data`** 持久化 **`/app/data`**（SQLite 与上传文件）。停止：`docker compose down`（卷默认保留）。
+
+#### 仅 Docker 单容器（不用 Compose / 不用 Nginx）
 
 ```bash
-# 构建
-docker build -t innerimg .
-
-# 运行（务必设置公网可访问的根地址，供生成完整图片 URL）
+docker build --platform linux/amd64 -t innerimg .
 docker run --rm -p 3000:3000 \
   -e PUBLIC_BASE_URL=https://你的域名 \
+  -e WEB_DIST=/app/web/dist \
   -v innerimg-data:/app/data \
   innerimg
 ```
 
-或使用 Compose（默认 `PUBLIC_BASE_URL=http://localhost:3000`，公网部署请在本机创建 `.env` 覆盖）：
-
-```bash
-docker compose up -d --build
-```
-
-数据卷 `innerimg_data` 持久化 `/app/data`（SQLite 与上传文件）。多副本水平扩展时请勿共用 SQLite 写入，应换共享对象存储与独立数据库，见上文「架构与扩展」。
+此时直接访问容器内 Fastify，无 Nginx；上传大小等需自行在网关或应用中控制。
 
 ### 4. 生产构建（仅静态资源，自建网关时）
 

@@ -1,9 +1,13 @@
+# 默认：linux/amd64（x86_64），Mac 上构建会走模拟，产出可在 x86 云主机直接运行。
+# 入口为 Nginx，便于大文件上传、统一反代；应用不对外直接暴露端口。
+
 services:
   innerimg:
     build: .
     image: innerimg:latest
-    ports:
-      - "${PORT:-3000}:3000"
+    platform: linux/amd64
+    expose:
+      - "3000"
     environment:
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:3000}
       MAX_FILE_MB: ${MAX_FILE_MB:-20}
@@ -12,6 +16,17 @@ services:
       RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-1 minute}
     volumes:
       - innerimg_data:/app/data
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    platform: linux/amd64
+    ports:
+      - "${PORT:-3000}:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - innerimg
     restart: unless-stopped
 
 volumes:
