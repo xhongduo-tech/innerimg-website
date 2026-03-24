@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="内网图片工具：Base64、HTML/SVG、临时 URL；无脚本可用表单，支持拖放上传。" />
+    <title><%= typeof title !== "undefined" ? title + " · " : "" %>InnerImg</title>
+    <link rel="stylesheet" href="/css/main.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到主要内容</a>
+    <div class="app-progress" id="app-progress" hidden role="status" aria-live="polite">
+      <div class="app-progress__track" aria-hidden="true">
+        <div class="app-progress__fill" id="app-progress-fill"></div>
+      </div>
+      <p class="app-progress__text" id="app-progress-text">处理中…</p>
+    </div>
