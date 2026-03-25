@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>格式互转 · InnerImg</title>
+  <style>
+    :root {
+      --bg0: #0c0d12;
+      --bg1: #12141c;
+      --surface: rgba(255, 255, 255, 0.04);
+      --surface2: rgba(255, 255, 255, 0.07);
+      --border: rgba(255, 255, 255, 0.1);
+      --text: #e8eaef;
+      --muted: #8b92a8;
+      --accent: #6ee7c5;
+      --accent2: #a78bfa;
+      --danger: #f87171;
+      --radius: 14px;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+      --font: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      color: var(--text);
+      background:
+        radial-gradient(ellipse 120% 80% at 10% -20%, rgba(110, 231, 197, 0.12), transparent 50%),
+        radial-gradient(ellipse 100% 60% at 100% 0%, rgba(167, 139, 250, 0.14), transparent 45%),
+        var(--bg0);
+      line-height: 1.5;
+    }
+
+    .wrap {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 4rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    header h1 {
+      font-size: clamp(1.75rem, 4vw, 2.25rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0 0 0.5rem;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      margin-bottom: 1.75rem;
+    }
+
+    .tab {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      padding: 0.65rem 1.25rem;
+      border-radius: 999px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.15s;
+    }
+
+    .tab:hover {
+      background: var(--surface2);
+      color: var(--text);
+    }
+
+    .tab[aria-selected="true"] {
+      background: linear-gradient(135deg, rgba(110, 231, 197, 0.2), rgba(167, 139, 250, 0.2));
+      border-color: rgba(110, 231, 197, 0.35);
+      color: var(--text);
+    }
+
+    .panel {
+      display: none;
+      background: var(--bg1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+    }
+
+    .panel.active {
+      display: block;
+      animation: fade 0.35s ease;
+    }
+
+    @keyframes fade {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .panel-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .panel-head h2 {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .panel-head .hint {
+      font-size: 0.8rem;
+      color: var(--muted);
+      flex: 1 1 100%;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+    }
+
+    @media (max-width: 820px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+    }
+
+    textarea, input[type="text"], input[type="number"] {
+      width: 100%;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      padding: 0.75rem 0.85rem;
+      resize: vertical;
+      min-height: 140px;
+    }
+
+    textarea:focus, input:focus {
+      outline: none;
+      border-color: rgba(110, 231, 197, 0.45);
+      box-shadow: 0 0 0 3px rgba(110, 231, 197, 0.12);
+    }
+
+    input[type="number"], input[type="text"].inline {
+      min-height: auto;
+    }
+
+    .row-inline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: flex-end;
+      margin-bottom: 1rem;
+    }
+
+    .row-inline > div {
+      flex: 1;
+      min-width: 100px;
+    }
+
+    .drop {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      margin-bottom: 1rem;
+    }
+
+    .drop:hover, .drop.dragover {
+      border-color: rgba(110, 231, 197, 0.5);
+      background: rgba(110, 231, 197, 0.06);
+      color: var(--text);
+    }
+
+    .drop strong {
+      color: var(--accent);
+    }
+
+    .preview-box {
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: repeating-conic-gradient(#1a1d28 0% 25%, #14161f 0% 50%) 50% / 16px 16px;
+      min-height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: auto;
+      padding: 0.75rem;
+    }
+
+    .preview-box img, .preview-box svg {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    }
+
+    .preview-box.empty {
+      color: var(--muted);
+      font-size: 0.875rem;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+
+    button.btn {
+      appearance: none;
+      border: none;
+      border-radius: 10px;
+      padding: 0.55rem 1rem;
+      font-family: inherit;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.12s, filter 0.2s;
+    }
+
+    button.btn:active {
+      transform: scale(0.98);
+    }
+
+    button.btn-primary {
+      background: linear-gradient(135deg, #34d399, #6ee7c5);
+      color: #052e26;
+    }
+
+    button.btn-secondary {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    button.btn-ghost {
+      background: transparent;
+      color: var(--accent2);
+      border: 1px solid rgba(167, 139, 250, 0.35);
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(120%);
+      background: var(--bg1);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.65rem 1.25rem;
+      border-radius: 999px;
+      font-size: 0.875rem;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transition: transform 0.35s ease, opacity 0.35s ease;
+      z-index: 100;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .toast.err {
+      border-color: rgba(248, 113, 113, 0.4);
+      color: var(--danger);
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 2.5rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>InnerImg 格式互转</h1>
+      <p>页面零外网依赖：转换与解析均在浏览器本地完成，数据不上传服务器（若你在 HTML/SVG 中自行引用外链图片，则由浏览器按常规则加载）</p>
+    </header>
+
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab" role="tab" aria-selected="true" data-tab="b64">Base64 ↔ 图片</button>
+      <button type="button" class="tab" role="tab" aria-selected="false" data-tab="html">HTML ↔ 图片</button>
+      <button type="button" class="tab" role="tab" aria-selected="false" data-tab="svg">SVG ↔ 图片</button>
+    </div>
+
+    <!-- Base64 -->
+    <section id="panel-b64" class="panel active" role="tabpanel">
+      <div class="panel-head">
+        <h2>Base64 与图片</h2>
+        <span class="hint">支持带或不带 <code style="color:var(--accent)">data:image/...;base64,</code> 前缀；可拖拽图片文件。</span>
+      </div>
+      <label class="drop" id="b64-drop" for="b64-file">
+        将图片拖到此处，或<strong>点击选择文件</strong>
+        <input type="file" id="b64-file" accept="image/*" />
+      </label>
+      <div class="grid-2">
+        <div>
+          <label for="b64-in">Base64 / Data URL</label>
+          <textarea id="b64-in" placeholder="粘贴 base64 或完整 data URL…"></textarea>
+          <div class="actions">
+            <button type="button" class="btn btn-primary" id="b64-decode">解码为预览</button>
+            <button type="button" class="btn btn-secondary" id="b64-copy">复制 Base64（纯）</button>
+          </div>
+        </div>
+        <div>
+          <label>预览</label>
+          <div class="preview-box empty" id="b64-preview">解码或上传后显示</div>
+          <div class="actions">
+            <button type="button" class="btn btn-secondary" id="b64-download" disabled>下载图片</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HTML -->
+    <section id="panel-html" class="panel" role="tabpanel">
+      <div class="panel-head">
+        <h2>HTML 与图片</h2>
+        <span class="hint">HTML → 图片：将片段渲染为 PNG（简单布局效果较好）；图片 → HTML：生成带内嵌 data URL 的 <code style="color:var(--accent2)">&lt;img&gt;</code> 片段。</span>
+      </div>
+      <div class="row-inline">
+        <div>
+          <label for="html-w">画布宽</label>
+          <input type="number" id="html-w" class="inline" value="800" min="100" max="4096" />
+        </div>
+        <div>
+          <label for="html-h">画布高</label>
+          <input type="number" id="html-h" class="inline" value="600" min="100" max="4096" />
+        </div>
+      </div>
+      <label class="drop" id="html-drop" for="html-file">
+        图片转 HTML：拖拽图片到此处，或<strong>点击选择</strong>
+        <input type="file" id="html-file" accept="image/*" />
+      </label>
+      <div class="grid-2">
+        <div>
+          <label for="html-in">HTML 片段</label>
+          <textarea id="html-in" placeholder="<div style='padding:24px;background:#fff;color:#111'>Hello</div>"></textarea>
+          <div class="actions">
+            <button type="button" class="btn btn-primary" id="html-to-img">渲染为 PNG</button>
+            <button type="button" class="btn btn-ghost" id="html-copy-out">复制输出</button>
+          </div>
+        </div>
+        <div>
+          <label>输出：图片预览 / HTML</label>
+          <div class="preview-box empty" id="html-preview">渲染结果或生成的 HTML</div>
+          <div class="actions">
+            <button type="button" class="btn btn-secondary" id="html-download" disabled>下载 PNG</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SVG -->
+    <section id="panel-svg" class="panel" role="tabpanel">
+      <div class="panel-head">
+        <h2>SVG 与图片</h2>
+        <span class="hint">SVG → 栅格图：导出 PNG；图片 → SVG：生成包裹位图的 SVG（矢量追踪需专业工具）。</span>
+      </div>
+      <label class="drop" id="svg-drop" for="svg-file">
+        栅格图转 SVG 包装：拖拽图片，或<strong>点击选择</strong>
+        <input type="file" id="svg-file" accept="image/*" />
+      </label>
+      <div class="grid-2">
+        <div>
+          <label for="svg-in">SVG 源码</label>
+          <textarea id="svg-in" placeholder='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#6ee7c5"/></svg>'></textarea>
+          <div class="actions">
+            <button type="button" class="btn btn-primary" id="svg-to-png">SVG → PNG</button>
+            <button type="button" class="btn btn-secondary" id="svg-copy">复制 SVG</button>
+          </div>
+        </div>
+        <div>
+          <label>预览</label>
+          <div class="preview-box empty" id="svg-preview">渲染或转换后显示</div>
+          <div class="actions">
+            <button type="button" class="btn btn-secondary" id="svg-download-png" disabled>下载 PNG</button>
+            <button type="button" class="btn btn-ghost" id="svg-download-svg" disabled>下载 SVG</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>由 Nginx 静态托管 · 纯离线页面资源 · 转换逻辑运行于你的浏览器</footer>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    (function () {
+      const toastEl = document.getElementById("toast");
+      let toastTimer;
+
+      function toast(msg, isErr) {
+        clearTimeout(toastTimer);
+        toastEl.textContent = msg;
+        toastEl.classList.toggle("err", !!isErr);
+        toastEl.classList.add("show");
+        toastTimer = setTimeout(function () {
+          toastEl.classList.remove("show");
+        }, 2600);
+      }
+
+      function stripDataUrlPrefix(s) {
+        if (!s) return s;
+        const m = s.match(/^data:image\/[^;]+;base64,(.+)$/i);
+        return m ? m[1].replace(/\s/g, "") : s.replace(/\s/g, "");
+      }
+
+      function withDataUrl(b64, mime) {
+        const clean = stripDataUrlPrefix(b64);
+        return "data:" + mime + ";base64," + clean;
+      }
+
+      function detectMimeFromB64(b64) {
+        try {
+          const bin = atob(stripDataUrlPrefix(b64).slice(0, 32));
+          if (bin.indexOf("PNG") === 1) return "image/png";
+          if (bin.indexOf("GIF") === 0) return "image/gif";
+          if (bin.indexOf("JFIF") > 0 || bin.indexOf("Exif") > 0) return "image/jpeg";
+          if (bin.indexOf("WEBP") > 0) return "image/webp";
+        } catch (e) { /* ignore */ }
+        return "image/png";
+      }
+
+      function blobToDataUrl(blob, cb) {
+        if (!blob) return;
+        var r = new FileReader();
+        r.onload = function () {
+          cb(r.result);
+        };
+        r.onerror = function () {
+          toast("读取图片数据失败", true);
+        };
+        r.readAsDataURL(blob);
+      }
+
+      var canvas2dOpts = { alpha: true, desynchronized: true };
+
+      function get2dContext(canvas) {
+        try {
+          return canvas.getContext("2d", canvas2dOpts);
+        } catch (e) {
+          return canvas.getContext("2d");
+        }
+      }
+
+      /* Tabs */
+      document.querySelectorAll(".tab").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var id = btn.getAttribute("data-tab");
+          document.querySelectorAll(".tab").forEach(function (b) {
+            b.setAttribute("aria-selected", b === btn ? "true" : "false");
+          });
+          document.querySelectorAll(".panel").forEach(function (p) {
+            p.classList.remove("active");
+          });
+          document.getElementById("panel-" + id).classList.add("active");
+        });
+      });
+
+      /* Base64 panel */
+      var b64In = document.getElementById("b64-in");
+      var b64Preview = document.getElementById("b64-preview");
+      var b64Download = document.getElementById("b64-download");
+      var b64DataUrl = "";
+
+      function setB64Preview(url) {
+        b64DataUrl = url;
+        b64Preview.classList.remove("empty");
+        b64Preview.innerHTML = "";
+        var img = document.createElement("img");
+        img.alt = "preview";
+        img.src = url;
+        img.onerror = function () {
+          b64Preview.classList.add("empty");
+          b64Preview.textContent = "无法解析为图片";
+          b64Download.disabled = true;
+          b64DataUrl = "";
+          toast("Base64 无效或不是图片", true);
+        };
+        img.onload = function () {
+          b64Download.disabled = false;
+        };
+        b64Preview.appendChild(img);
+      }
+
+      document.getElementById("b64-decode").addEventListener("click", function () {
+        var raw = b64In.value.trim();
+        if (!raw) {
+          toast("请先输入 Base64 或 Data URL", true);
+          return;
+        }
+        var url;
+        if (/^data:image\//i.test(raw)) {
+          url = raw.replace(/\s/g, "");
+        } else {
+          url = withDataUrl(raw, detectMimeFromB64(raw));
+        }
+        setB64Preview(url);
+      });
+
+      document.getElementById("b64-copy").addEventListener("click", function () {
+        var raw = b64In.value.trim();
+        var plain = stripDataUrlPrefix(raw);
+        if (!plain) {
+          toast("没有可复制的内容", true);
+          return;
+        }
+        navigator.clipboard.writeText(plain).then(function () {
+          toast("已复制纯 Base64");
+        }).catch(function () {
+          toast("复制失败", true);
+        });
+      });
+
+      document.getElementById("b64-download").addEventListener("click", function () {
+        if (!b64DataUrl) return;
+        var a = document.createElement("a");
+        a.href = b64DataUrl;
+        a.download = "image-from-base64.png";
+        a.click();
+        toast("已开始下载");
+      });
+
+      function fileToDataUrl(file, cb) {
+        var r = new FileReader();
+        r.onload = function () { cb(r.result); };
+        r.onerror = function () { toast("读取文件失败", true); };
+        r.readAsDataURL(file);
+      }
+
+      document.getElementById("b64-file").addEventListener("change", function (e) {
+        var f = e.target.files && e.target.files[0];
+        if (!f) return;
+        fileToDataUrl(f, function (dataUrl) {
+          b64In.value = dataUrl;
+          setB64Preview(dataUrl);
+          toast("已加载图片并填入 Data URL");
+        });
+        e.target.value = "";
+      });
+
+      function setupDrop(zoneId, inputId, handler) {
+        var zone = document.getElementById(zoneId);
+        var input = document.getElementById(inputId);
+        ["dragenter", "dragover"].forEach(function (ev) {
+          zone.addEventListener(ev, function (e) {
+            e.preventDefault();
+            zone.classList.add("dragover");
+          });
+        });
+        ["dragleave", "drop"].forEach(function (ev) {
+          zone.addEventListener(ev, function () {
+            zone.classList.remove("dragover");
+          });
+        });
+        zone.addEventListener("drop", function (e) {
+          e.preventDefault();
+          var f = e.dataTransfer.files[0];
+          if (f && f.type.indexOf("image/") === 0) handler(f);
+          else toast("请拖入图片文件", true);
+        });
+      }
+
+      setupDrop("b64-drop", "b64-file", function (f) {
+        fileToDataUrl(f, function (dataUrl) {
+          b64In.value = dataUrl;
+          setB64Preview(dataUrl);
+          toast("已加载图片");
+        });
+      });
+
+      /* HTML panel */
+      var htmlIn = document.getElementById("html-in");
+      var htmlPreview = document.getElementById("html-preview");
+      var htmlDownload = document.getElementById("html-download");
+      var htmlPngBlobUrl = "";
+      var htmlPngBlob = null;
+
+      document.getElementById("html-to-img").addEventListener("click", function () {
+        var html = htmlIn.value.trim();
+        if (!html) {
+          toast("请输入 HTML", true);
+          return;
+        }
+        htmlPngBlob = null;
+        var w = parseInt(document.getElementById("html-w").value, 10) || 800;
+        var h = parseInt(document.getElementById("html-h").value, 10) || 600;
+        var wrapped =
+          "<div xmlns=\"http://www.w3.org/1999/xhtml\" style=\"box-sizing:border-box;width:" + w + "px;height:" + h + "px;overflow:hidden;background:#fff;color:#111;font-family:system-ui,sans-serif;\">" +
+          html +
+          "</div>";
+        var svg =
+          "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" + w + "\" height=\"" + h + "\">" +
+          "<foreignObject width=\"100%\" height=\"100%\">" + wrapped + "</foreignObject></svg>";
+        var blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+        var url = URL.createObjectURL(blob);
+        var img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = function () {
+          try {
+            var canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            var ctx = get2dContext(canvas);
+            ctx.drawImage(img, 0, 0);
+            URL.revokeObjectURL(url);
+            canvas.toBlob(function (blob) {
+              if (htmlPngBlobUrl) URL.revokeObjectURL(htmlPngBlobUrl);
+              htmlPngBlob = blob;
+              htmlPngBlobUrl = URL.createObjectURL(blob);
+              htmlPreview.classList.remove("empty");
+              htmlPreview.innerHTML = "";
+              var out = document.createElement("img");
+              out.src = htmlPngBlobUrl;
+              out.alt = "rendered";
+              htmlPreview.appendChild(out);
+              htmlDownload.disabled = false;
+              toast("已渲染为 PNG");
+            }, "image/png");
+          } catch (err) {
+            URL.revokeObjectURL(url);
+            toast("渲染失败（浏览器可能限制跨域或内容）", true);
+          }
+        };
+        img.onerror = function () {
+          URL.revokeObjectURL(url);
+          toast("无法加载 HTML 渲染结果", true);
+        };
+        img.src = url;
+      });
+
+      document.getElementById("html-copy-out").addEventListener("click", function () {
+        function copySnippet(dataUrl) {
+          var snippet = "<img src=\"" + dataUrl + "\" alt=\"image\" />";
+          navigator.clipboard.writeText(snippet).then(function () {
+            toast("已复制带 data URL 的 img 标签");
+          }).catch(function () {
+            toast("复制失败", true);
+          });
+        }
+        if (htmlPngBlob) {
+          blobToDataUrl(htmlPngBlob, copySnippet);
+          return;
+        }
+        var img = htmlPreview.querySelector("img");
+        if (!img || !img.src) {
+          toast("请先渲染 PNG 或上传图片生成 HTML", true);
+          return;
+        }
+        copySnippet(img.src);
+      });
+
+      document.getElementById("html-download").addEventListener("click", function () {
+        if (!htmlPngBlobUrl) return;
+        var a = document.createElement("a");
+        a.href = htmlPngBlobUrl;
+        a.download = "html-render.png";
+        a.click();
+        toast("已开始下载");
+      });
+
+      function imageFileToHtmlSnippet(file) {
+        fileToDataUrl(file, function (dataUrl) {
+          var snippet = "<!DOCTYPE html>\n<html lang=\"zh-CN\">\n<head><meta charset=\"UTF-8\" /><title>embedded</title></head>\n<body>\n<img src=\"" + dataUrl + "\" alt=\"image\" style=\"max-width:100%;height:auto;\" />\n</body>\n</html>";
+          htmlIn.value = snippet;
+          htmlPreview.classList.remove("empty");
+          htmlPreview.innerHTML = "";
+          var pre = document.createElement("pre");
+          pre.style.margin = "0";
+          pre.style.whiteSpace = "pre-wrap";
+          pre.style.wordBreak = "break-all";
+          pre.style.fontSize = "0.7rem";
+          pre.style.color = "var(--muted)";
+          pre.textContent = snippet.slice(0, 2000) + (snippet.length > 2000 ? "\n…" : "");
+          htmlPreview.appendChild(pre);
+          htmlDownload.disabled = true;
+          htmlPngBlob = null;
+          if (htmlPngBlobUrl) {
+            URL.revokeObjectURL(htmlPngBlobUrl);
+            htmlPngBlobUrl = "";
+          }
+          toast("已生成 HTML（完整内容在左侧文本框）");
+        });
+      }
+
+      document.getElementById("html-file").addEventListener("change", function (e) {
+        var f = e.target.files && e.target.files[0];
+        if (f) imageFileToHtmlSnippet(f);
+        e.target.value = "";
+      });
+
+      setupDrop("html-drop", "html-file", imageFileToHtmlSnippet);
+
+      /* SVG panel */
+      var svgIn = document.getElementById("svg-in");
+      var svgPreview = document.getElementById("svg-preview");
+      var svgDownloadPng = document.getElementById("svg-download-png");
+      var svgDownloadSvg = document.getElementById("svg-download-svg");
+      var svgPngBlobUrl = "";
+      var svgWrappedText = "";
+
+      function parseSvgSize(svgText) {
+        var w = 300, h = 150;
+        var vb = svgText.match(/viewBox\s*=\s*["']([^"']+)["']/i);
+        if (vb) {
+          var p = vb[1].trim().split(/[\s,]+/);
+          if (p.length >= 4) {
+            w = Math.max(1, parseFloat(p[2]) || w);
+            h = Math.max(1, parseFloat(p[3]) || h);
+          }
+        }
+        var wm = svgText.match(/\bwidth\s*=\s*["']([^"']+)["']/i);
+        var hm = svgText.match(/\bheight\s*=\s*["']([^"']+)["']/i);
+        if (wm) {
+          var x = parseFloat(wm[1]);
+          if (!isNaN(x)) w = x;
+        }
+        if (hm) {
+          var y = parseFloat(hm[1]);
+          if (!isNaN(y)) h = y;
+        }
+        return { w: Math.min(4096, Math.round(w)), h: Math.min(4096, Math.round(h)) };
+      }
+
+      document.getElementById("svg-to-png").addEventListener("click", function () {
+        var text = svgIn.value.trim();
+        if (!text || !/^\s*<\s*svg/i.test(text)) {
+          toast("请输入完整 SVG 源码（以 <svg 开头）", true);
+          return;
+        }
+        var size = parseSvgSize(text);
+        var blob = new Blob([text], { type: "image/svg+xml;charset=utf-8" });
+        var url = URL.createObjectURL(blob);
+        var img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = function () {
+          try {
+            var canvas = document.createElement("canvas");
+            canvas.width = size.w;
+            canvas.height = size.h;
+            var ctx = get2dContext(canvas);
+            ctx.drawImage(img, 0, 0, size.w, size.h);
+            URL.revokeObjectURL(url);
+            canvas.toBlob(function (b) {
+              if (svgPngBlobUrl) URL.revokeObjectURL(svgPngBlobUrl);
+              svgPngBlobUrl = URL.createObjectURL(b);
+              svgPreview.classList.remove("empty");
+              svgPreview.innerHTML = "";
+              var out = document.createElement("img");
+              out.src = svgPngBlobUrl;
+              out.alt = "svg raster";
+              svgPreview.appendChild(out);
+              svgDownloadPng.disabled = false;
+              toast("已转为 PNG");
+            }, "image/png");
+          } catch (err) {
+            URL.revokeObjectURL(url);
+            toast("SVG 转 PNG 失败", true);
+          }
+        };
+        img.onerror = function () {
+          URL.revokeObjectURL(url);
+          toast("SVG 无法解析或包含受限资源", true);
+        };
+        img.src = url;
+      });
+
+      document.getElementById("svg-copy").addEventListener("click", function () {
+        var t = svgIn.value.trim();
+        if (!t) {
+          toast("没有 SVG 内容", true);
+          return;
+        }
+        navigator.clipboard.writeText(t).then(function () {
+          toast("已复制 SVG 源码");
+        }).catch(function () {
+          toast("复制失败", true);
+        });
+      });
+
+      document.getElementById("svg-download-png").addEventListener("click", function () {
+        if (!svgPngBlobUrl) return;
+        var a = document.createElement("a");
+        a.href = svgPngBlobUrl;
+        a.download = "from-svg.png";
+        a.click();
+        toast("已开始下载");
+      });
+
+      document.getElementById("svg-download-svg").addEventListener("click", function () {
+        if (!svgWrappedText) return;
+        var blob = new Blob([svgWrappedText], { type: "image/svg+xml;charset=utf-8" });
+        var u = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = u;
+        a.download = "wrapped-image.svg";
+        a.click();
+        setTimeout(function () { URL.revokeObjectURL(u); }, 1000);
+        toast("已开始下载 SVG");
+      });
+
+      function rasterToWrappedSvg(file) {
+        fileToDataUrl(file, function (dataUrl) {
+          var w = 800;
+          var h = 600;
+          var svgDoc =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" " +
+            "width=\"" + w + "\" height=\"" + h + "\" viewBox=\"0 0 " + w + " " + h + "\">" +
+            "<image href=\"" + dataUrl + "\" xlink:href=\"" + dataUrl + "\" width=\"100%\" height=\"100%\" preserveAspectRatio=\"xMidYMid meet\" />" +
+            "</svg>";
+          svgWrappedText = svgDoc;
+          svgIn.value = svgDoc;
+          svgPreview.classList.remove("empty");
+          svgPreview.innerHTML = "";
+          var inner = svgDoc.replace(/^<\?xml[^>]*>\s*/i, "");
+          var blob = new Blob([inner], { type: "image/svg+xml;charset=utf-8" });
+          var prevUrl = URL.createObjectURL(blob);
+          var out = document.createElement("img");
+          out.alt = "wrapped svg preview";
+          out.src = prevUrl;
+          out.onload = function () { URL.revokeObjectURL(prevUrl); };
+          svgPreview.appendChild(out);
+          svgDownloadSvg.disabled = false;
+          if (svgPngBlobUrl) {
+            URL.revokeObjectURL(svgPngBlobUrl);
+            svgPngBlobUrl = "";
+          }
+          svgDownloadPng.disabled = true;
+          toast("已生成嵌入位图的 SVG");
+        });
+      }
+
+      document.getElementById("svg-file").addEventListener("change", function (e) {
+        var f = e.target.files && e.target.files[0];
+        if (f) rasterToWrappedSvg(f);
+        e.target.value = "";
+      });
+
+      setupDrop("svg-drop", "svg-file", rasterToWrappedSvg);
+    })();
+  </script>
+</body>
+</html>
