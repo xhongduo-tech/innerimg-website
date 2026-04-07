@@ -76,6 +76,7 @@
 
     .tab {
       appearance: none;
+      -webkit-appearance: none;
       border: 1px solid var(--border);
       background: var(--surface);
       color: var(--muted);
@@ -86,6 +87,23 @@
       font-weight: 500;
       cursor: pointer;
       transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .tab::-moz-focus-inner {
+      border: 0;
+      padding: 0;
+    }
+
+    .tab:focus {
+      outline: none;
+    }
+
+    .tab:focus-visible {
+      outline: 2px solid rgba(110, 231, 197, 0.55);
+      outline-offset: 3px;
     }
 
     .tab:hover {
@@ -222,24 +240,49 @@
       border-radius: 12px;
       border: 1px solid var(--border);
       background: repeating-conic-gradient(#1a1d28 0% 25%, #14161f 0% 50%) 50% / 16px 16px;
-      min-height: 200px;
       display: flex;
       align-items: center;
       justify-content: center;
       overflow: auto;
       padding: 0.75rem;
+      box-sizing: border-box;
     }
 
-    .preview-box img, .preview-box svg {
+    .preview-box.empty {
+      min-height: 200px;
+      color: var(--muted);
+      font-size: 0.875rem;
+    }
+
+    /* 预览图尺寸由 JS 按「宽度铺满可用区域、高度按比例」计算，见 bindPreviewImageLayout */
+    .preview-box img.preview-img {
+      display: block;
+      margin: 0 auto;
       max-width: 100%;
       height: auto;
+      object-fit: contain;
       border-radius: 8px;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
     }
 
-    .preview-box.empty {
-      color: var(--muted);
-      font-size: 0.875rem;
+    .preview-box > svg {
+      display: block;
+      max-width: 100%;
+      width: auto;
+      height: auto;
+      max-height: min(85vh, 1200px);
+      border-radius: 8px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    }
+
+    .preview-box pre {
+      display: block;
+      max-width: 100%;
+      width: 100%;
+      max-height: min(70vh, 720px);
+      overflow: auto;
+      margin: 0;
+      box-sizing: border-box;
     }
 
     .actions {
@@ -247,10 +290,40 @@
       flex-wrap: wrap;
       gap: 0.5rem;
       margin-top: 0.75rem;
+      align-items: center;
+    }
+
+    .select-inline {
+      font-family: inherit;
+      font-size: 0.82rem;
+      font-weight: 500;
+      padding: 0.48rem 0.75rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg1);
+      color: var(--text);
+      min-width: 6.5rem;
+      cursor: pointer;
+    }
+
+    .select-inline:focus {
+      outline: none;
+      border-color: rgba(110, 231, 197, 0.45);
+      box-shadow: 0 0 0 3px rgba(110, 231, 197, 0.12);
+    }
+
+    .download-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      margin-right: 0.15rem;
     }
 
     button.btn {
       appearance: none;
+      -webkit-appearance: none;
       border: none;
       border-radius: 10px;
       padding: 0.55rem 1rem;
@@ -259,6 +332,23 @@
       font-weight: 600;
       cursor: pointer;
       transition: transform 0.12s, filter 0.2s;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    button.btn::-moz-focus-inner {
+      border: 0;
+      padding: 0;
+    }
+
+    button.btn:focus {
+      outline: none;
+    }
+
+    button.btn:focus-visible {
+      outline: 2px solid rgba(110, 231, 197, 0.5);
+      outline-offset: 2px;
     }
 
     button.btn:active {
@@ -309,6 +399,457 @@
       color: var(--danger);
     }
 
+    .global-progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1200;
+      padding: 0.65rem 1.25rem 0.75rem;
+      background: linear-gradient(180deg, rgba(12, 13, 18, 0.96), rgba(12, 13, 18, 0.88));
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+      transform: translateY(-110%);
+      opacity: 0;
+      transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.28s ease;
+      pointer-events: none;
+    }
+
+    .global-progress.is-visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .global-progress__head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.45rem;
+      max-width: 1120px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .global-progress__head span:first-child {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    #global-progress-pct {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--accent);
+    }
+
+    .global-progress__track {
+      max-width: 1120px;
+      margin: 0 auto;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--surface2);
+      overflow: hidden;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+    }
+
+    .global-progress__fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #34d399, var(--accent), var(--accent2));
+      background-size: 200% 100%;
+      animation: progress-shine 1.8s ease infinite;
+      transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    @keyframes progress-shine {
+      0% { background-position: 100% 0; }
+      100% { background-position: -100% 0; }
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1300;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.25rem;
+      background: rgba(6, 7, 10, 0.72);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.28s ease, visibility 0.28s ease;
+    }
+
+    .modal-overlay.is-open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal-card {
+      width: min(420px, 100%);
+      background: var(--bg1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem 1.5rem 1.35rem;
+      box-shadow: var(--shadow);
+      transform: scale(0.94) translateY(12px);
+      transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .modal-overlay.is-open .modal-card {
+      transform: scale(1) translateY(0);
+    }
+
+    .modal-card h3 {
+      margin: 0 0 0.65rem;
+      font-size: 1.15rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .modal-card p {
+      margin: 0 0 1rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .modal-card .modal-meta {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.65rem 0.75rem;
+      margin-bottom: 1.15rem;
+      line-height: 1.6;
+    }
+
+    .modal-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .modal-actions .btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .modal-actions-row {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .modal-actions-row .btn {
+      flex: 1;
+      min-width: 120px;
+    }
+
+    .api-doc {
+      font-size: 0.9rem;
+      line-height: 1.6;
+      color: var(--text);
+    }
+
+    .api-doc > p,
+    .api-doc > ul {
+      margin: 0 0 0.85rem;
+      color: var(--muted);
+    }
+
+    .api-doc ul {
+      padding-left: 1.25rem;
+    }
+
+    .api-doc h3 {
+      margin: 1.35rem 0 0.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      border-left: 3px solid var(--accent);
+      padding-left: 0.65rem;
+    }
+
+    .api-doc h3:first-of-type {
+      margin-top: 0;
+    }
+
+    .api-doc-hero {
+      margin-bottom: 1.75rem;
+      padding: 1.15rem 1.25rem 1.25rem;
+      border-radius: 12px;
+      background: linear-gradient(145deg, rgba(110, 231, 197, 0.06), rgba(167, 139, 250, 0.05));
+      border: 1px solid var(--border);
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+    }
+
+    .api-doc-hero__row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem 0.75rem;
+      margin-bottom: 0.65rem;
+    }
+
+    .api-doc-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0.55rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: rgba(110, 231, 197, 0.1);
+      border: 1px solid rgba(110, 231, 197, 0.28);
+      border-radius: 999px;
+    }
+
+    .api-doc-pill--muted {
+      color: var(--muted);
+      background: var(--surface);
+      border-color: var(--border);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    .api-doc-lead {
+      margin: 0 0 1rem;
+      font-size: 0.82rem;
+      line-height: 1.55;
+      color: var(--muted);
+    }
+
+    .api-lang-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin: 0;
+      padding: 0.65rem 0.9rem;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    .api-lang-toolbar label {
+      margin: 0;
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 700;
+    }
+
+    .api-lang-toolbar select {
+      font-family: inherit;
+      padding: 0.5rem 0.95rem;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: var(--bg1);
+      color: var(--text);
+      cursor: pointer;
+      min-width: 11rem;
+      font-size: 0.88rem;
+      font-weight: 500;
+    }
+
+    .api-endpoint {
+      margin-bottom: 1.35rem;
+      padding: 1rem 1rem 1.1rem;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.18);
+      border: 1px solid var(--border);
+      border-left: 3px solid rgba(110, 231, 197, 0.45);
+    }
+
+    .api-endpoint:last-child {
+      margin-bottom: 0;
+    }
+
+    .api-endpoint__title {
+      margin: 0 0 0.85rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      line-height: 1.45;
+      color: var(--text);
+      font-family: var(--mono);
+    }
+
+    .api-code-block {
+      display: none;
+    }
+
+    .api-code-block.is-active {
+      display: block;
+    }
+
+    .api-code-block__toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.45rem 0.85rem 0.45rem 1rem;
+      background: #252526;
+      border: 1px solid #3c3c3c;
+      border-bottom: none;
+      border-radius: 10px 10px 0 0;
+    }
+
+    .api-code-lang {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #858585;
+      letter-spacing: 0.02em;
+    }
+
+    .api-copy-btn {
+      flex-shrink: 0;
+      appearance: none;
+      -webkit-appearance: none;
+      font-family: inherit;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.38rem 0.85rem;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(255, 255, 255, 0.07);
+      color: #e0e0e0;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .api-copy-btn:hover {
+      background: rgba(110, 231, 197, 0.14);
+      border-color: rgba(110, 231, 197, 0.4);
+      color: var(--accent);
+    }
+
+    .api-copy-btn:focus {
+      outline: none;
+    }
+
+    .api-copy-btn:focus-visible {
+      outline: 2px solid rgba(110, 231, 197, 0.55);
+      outline-offset: 2px;
+    }
+
+    .api-copy-btn.is-copied {
+      background: rgba(110, 231, 197, 0.2);
+      border-color: rgba(110, 231, 197, 0.45);
+      color: var(--accent);
+    }
+
+    /* API 代码块：VS Code Dark+ 风格 */
+    .api-doc pre.api-ex {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      overflow-x: auto;
+      background: #1e1e1e;
+      border: 1px solid #3c3c3c;
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      margin: 0 0 0.85rem;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #d4d4d4;
+      display: block;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .api-code-block__toolbar + pre.api-ex {
+      border-top: none;
+      border-top-left-radius: 0;
+      border-top-right-radius: 0;
+      border-radius: 0 0 10px 10px;
+      margin-bottom: 0;
+    }
+
+    .api-code-block .api-ex:last-child {
+      margin-bottom: 0;
+    }
+
+    .api-doc pre.api-ex .tok-keyword {
+      color: #569cd6;
+    }
+
+    .api-doc pre.api-ex .tok-string {
+      color: #ce9178;
+    }
+
+    .api-doc pre.api-ex .tok-comment {
+      color: #6a9955;
+      font-style: italic;
+    }
+
+    .api-doc pre.api-ex .tok-global,
+    .api-doc pre.api-ex .tok-builtin,
+    .api-doc pre.api-ex .tok-module {
+      color: #4ec9b0;
+    }
+
+    .api-doc pre.api-ex .tok-func {
+      color: #dcdcaa;
+    }
+
+    .api-doc pre.api-ex .tok-prop {
+      color: #9cdcfe;
+    }
+
+    .api-doc pre.api-ex .tok-const {
+      color: #569cd6;
+    }
+
+    .api-doc pre.api-ex .tok-command {
+      color: #dcdcaa;
+      font-weight: 600;
+    }
+
+    .api-doc pre.api-ex .tok-flag {
+      color: #569cd6;
+    }
+
+    .api-doc pre.api-ex .tok-uri {
+      color: #ce9178;
+    }
+
+    .api-doc pre.api-ex .tok-var {
+      color: #9cdcfe;
+    }
+
+    .api-doc pre.api-ex .tok-meta {
+      color: #c586c0;
+    }
+
+    .api-doc pre.api-ex .tok-heredoc {
+      color: #d7ba7d;
+    }
+
+    .api-doc pre.api-ex .tok-number {
+      color: #b5cea8;
+    }
+
+    .api-doc code.inline {
+      font-family: var(--mono);
+      font-size: 0.8em;
+      color: var(--accent2);
+    }
+
     footer {
       text-align: center;
       margin-top: 2.5rem;
@@ -319,19 +860,47 @@
     input[type="file"] {
       display: none;
     }
+
   </style>
 </head>
 <body>
+  <div id="global-progress" class="global-progress" aria-hidden="true">
+    <div class="global-progress__head">
+      <span id="global-progress-label">处理中</span>
+      <span id="global-progress-pct">0%</span>
+    </div>
+    <div class="global-progress__track">
+      <div class="global-progress__fill" id="global-progress-fill"></div>
+    </div>
+  </div>
+
+  <div id="large-img-modal" class="modal-overlay" aria-hidden="true" role="presentation">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="large-img-modal-title">
+      <h3 id="large-img-modal-title">较大图片提示</h3>
+      <p id="large-img-modal-desc">该图片体积或分辨率较大，在性能较弱的设备上处理可能较慢或占用较多内存。</p>
+      <div class="modal-meta" id="large-img-modal-meta"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-primary" id="large-img-compress">压缩后处理（推荐）</button>
+        <div class="modal-actions-row">
+          <button type="button" class="btn btn-secondary" id="large-img-original">使用原图</button>
+          <button type="button" class="btn btn-ghost" id="large-img-cancel">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="wrap">
     <header>
       <h1>InnerImg 格式互转</h1>
-      <p>页面零外网依赖：转换与解析均在浏览器本地完成，数据不上传服务器（若你在 HTML/SVG 中自行引用外链图片，则由浏览器按常规则加载）</p>
+      <p>Base64 / HTML / SVG 核心互转在浏览器本地完成；<strong>下载时选择 JPEG、WebP、AVIF 等格式</strong>或「格式互转」页签需通过本站 API（Sharp）处理，部署时请一并启动后端服务。</p>
     </header>
 
     <div class="tabs" role="tablist">
       <button type="button" class="tab" role="tab" aria-selected="true" data-tab="b64">Base64 ↔ 图片</button>
       <button type="button" class="tab" role="tab" aria-selected="false" data-tab="html">HTML ↔ 图片</button>
       <button type="button" class="tab" role="tab" aria-selected="false" data-tab="svg">SVG ↔ 图片</button>
+      <button type="button" class="tab" role="tab" aria-selected="false" data-tab="convert">格式互转</button>
+      <button type="button" class="tab" role="tab" aria-selected="false" data-tab="api">API 调用</button>
     </div>
 
     <!-- Base64 -->
@@ -357,7 +926,14 @@
           <label>预览</label>
           <div class="preview-box empty" id="b64-preview">解码或上传后显示</div>
           <div class="actions">
-            <button type="button" class="btn btn-secondary" id="b64-download" disabled>下载图片</button>
+            <label class="download-label" for="b64-download-format">格式</label>
+            <select id="b64-download-format" class="select-inline" disabled>
+              <option value="png">PNG</option>
+              <option value="jpeg">JPEG</option>
+              <option value="webp">WebP</option>
+              <option value="avif">AVIF</option>
+            </select>
+            <button type="button" class="btn btn-secondary" id="b64-download" disabled>下载</button>
           </div>
         </div>
       </div>
@@ -367,17 +943,7 @@
     <section id="panel-html" class="panel" role="tabpanel">
       <div class="panel-head">
         <h2>HTML 与图片</h2>
-        <span class="hint">HTML → 图片：将片段渲染为 PNG（简单布局效果较好）；图片 → HTML：生成带内嵌 data URL 的 <code style="color:var(--accent2)">&lt;img&gt;</code> 片段。</span>
-      </div>
-      <div class="row-inline">
-        <div>
-          <label for="html-w">画布宽</label>
-          <input type="number" id="html-w" class="inline" value="800" min="100" max="4096" />
-        </div>
-        <div>
-          <label for="html-h">画布高</label>
-          <input type="number" id="html-h" class="inline" value="600" min="100" max="4096" />
-        </div>
+        <span class="hint">HTML → 图片：含 <code style="color:var(--accent2)">data:image/...</code> 的 <code style="color:var(--accent2)">&lt;img&gt;</code> 时按<strong>原图尺寸</strong>导出 PNG（单边最大 4096）；其它 HTML 使用内置画布 800×600 做 SVG 渲染。上传图片后会自动生成 HTML 并预览。</span>
       </div>
       <label class="drop" id="html-drop" for="html-file">
         图片转 HTML：拖拽图片到此处，或<strong>点击选择</strong>
@@ -396,7 +962,14 @@
           <label>输出：图片预览 / HTML</label>
           <div class="preview-box empty" id="html-preview">渲染结果或生成的 HTML</div>
           <div class="actions">
-            <button type="button" class="btn btn-secondary" id="html-download" disabled>下载 PNG</button>
+            <label class="download-label" for="html-download-format">格式</label>
+            <select id="html-download-format" class="select-inline" disabled>
+              <option value="png" selected>PNG</option>
+              <option value="jpeg">JPEG</option>
+              <option value="webp">WebP</option>
+              <option value="avif">AVIF</option>
+            </select>
+            <button type="button" class="btn btn-secondary" id="html-download" disabled>下载</button>
           </div>
         </div>
       </div>
@@ -425,14 +998,410 @@
           <label>预览</label>
           <div class="preview-box empty" id="svg-preview">渲染或转换后显示</div>
           <div class="actions">
-            <button type="button" class="btn btn-secondary" id="svg-download-png" disabled>下载 PNG</button>
+            <label class="download-label" for="svg-download-format">栅格格式</label>
+            <select id="svg-download-format" class="select-inline" disabled>
+              <option value="png" selected>PNG</option>
+              <option value="jpeg">JPEG</option>
+              <option value="webp">WebP</option>
+              <option value="avif">AVIF</option>
+            </select>
+            <button type="button" class="btn btn-secondary" id="svg-download-png" disabled>下载栅格图</button>
             <button type="button" class="btn btn-ghost" id="svg-download-svg" disabled>下载 SVG</button>
           </div>
         </div>
       </div>
     </section>
 
-    <footer>由 Nginx 静态托管 · 纯离线页面资源 · 转换逻辑运行于你的浏览器</footer>
+    <!-- 格式互转 -->
+    <section id="panel-convert" class="panel" role="tabpanel">
+      <div class="panel-head">
+        <h2>图片格式互转</h2>
+        <span class="hint">将常见位图转为 PNG / JPEG / WebP / AVIF（依赖 Sharp API）。可选长边缩放与有损质量。</span>
+      </div>
+      <label class="drop" id="convert-drop" for="convert-file">
+        拖拽图片到此处，或<strong>点击选择</strong>
+        <input type="file" id="convert-file" accept="image/*" />
+      </label>
+      <div class="grid-2">
+        <div>
+          <label for="convert-format">输出格式</label>
+          <select id="convert-format" class="select-inline" style="max-width: 18rem">
+            <option value="png">PNG</option>
+            <option value="jpeg">JPEG</option>
+            <option value="webp" selected>WebP</option>
+            <option value="avif">AVIF</option>
+          </select>
+          <div class="row-inline" style="margin-top: 0.85rem">
+            <div>
+              <label for="convert-max-edge">长边上限（可选）</label>
+              <input type="number" id="convert-max-edge" class="inline" placeholder="不缩放留空" min="32" max="8192" />
+            </div>
+            <div>
+              <label for="convert-quality">质量 1–100</label>
+              <input type="number" id="convert-quality" class="inline" value="85" min="1" max="100" />
+            </div>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn btn-primary" id="convert-download" disabled>转换并下载</button>
+          </div>
+        </div>
+        <div>
+          <label>预览</label>
+          <div class="preview-box empty" id="convert-preview">上传后显示</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- API 调用示例 -->
+    <section id="panel-api" class="panel" role="tabpanel">
+      <div class="panel-head">
+        <h2>API 调用</h2>
+        <span class="hint">服务端点、请求形式与可直接粘贴运行的示例代码。</span>
+      </div>
+      <div class="api-doc">
+        <div class="api-doc-hero">
+          <div class="api-doc-hero__row">
+            <span class="api-doc-pill">REST</span>
+            <span class="api-doc-pill api-doc-pill--muted">Express · Sharp</span>
+            <span class="api-doc-pill api-doc-pill--muted">BASE 已配置</span>
+          </div>
+          <p class="api-doc-lead">
+            示例中 <code class="inline">BASE</code> 为 <code class="inline">http://img-convert.cs.icbc</code>；本地文件路径请按环境修改。
+            下方可按语言切换示例；每段代码右上角可<strong>一键复制</strong>（纯文本，无 HTML 标签）。
+            运行要求：Node <strong>18+</strong>；Python 需 <code class="inline">requests</code>。
+          </p>
+          <div class="api-lang-toolbar">
+            <label for="api-example-lang">示例语言</label>
+            <select id="api-example-lang" aria-label="选择示例代码形式">
+              <option value="nodejs" selected>Node.js</option>
+              <option value="curl">curl</option>
+              <option value="python">Python</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <h3 class="api-endpoint__title">GET /api/health 与 GET /api/</h3>
+          <div class="api-code-block api-ex-nodejs is-active">
+            <div class="api-code-block__toolbar">
+              <span class="api-code-lang">Node.js</span>
+              <button type="button" class="api-copy-btn" aria-label="复制此段 Node.js 示例">复制</button>
+            </div>
+            <pre class="api-ex api-ex-nodejs">const BASE = "http://img-convert.cs.icbc";
+
+(async () => {
+  const h = await fetch(BASE + "/api/health");
+  console.log(await h.json());
+  const idx = await fetch(BASE + "/api/");
+  console.log(await idx.json());
+})();</pre>
+          </div>
+          <div class="api-code-block api-ex-curl">
+            <div class="api-code-block__toolbar">
+              <span class="api-code-lang">curl</span>
+              <button type="button" class="api-copy-btn" aria-label="复制此段 curl 示例">复制</button>
+            </div>
+            <pre class="api-ex api-ex-curl">BASE=http://img-convert.cs.icbc
+curl -sS "$BASE/api/health"
+curl -sS "$BASE/api/"</pre>
+          </div>
+          <div class="api-code-block api-ex-python">
+            <div class="api-code-block__toolbar">
+              <span class="api-code-lang">Python</span>
+              <button type="button" class="api-copy-btn" aria-label="复制此段 Python 示例">复制</button>
+            </div>
+            <pre class="api-ex api-ex-python">import requests
+
+BASE = "http://img-convert.cs.icbc"
+print(requests.get(f"{BASE}/api/health").json())
+print(requests.get(f"{BASE}/api/").json())</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <h3 class="api-endpoint__title">POST /api/image/to-base64（multipart，字段 file）</h3>
+          <div class="api-code-block api-ex-nodejs is-active">
+            <div class="api-code-block__toolbar">
+              <span class="api-code-lang">Node.js</span>
+              <button type="button" class="api-copy-btn" aria-label="复制此段 Node.js 示例">复制</button>
+            </div>
+            <pre class="api-ex api-ex-nodejs">const BASE = "http://img-convert.cs.icbc";
+const fs = require("fs");
+const { Blob } = require("buffer");
+
+(async () => {
+  const buf = fs.readFileSync("./photo.png");
+  const blob = new Blob([buf], { type: "image/png" });
+  const fd = new FormData();
+  fd.append("file", blob, "photo.png");
+  const res = await fetch(BASE + "/api/image/to-base64", { method: "POST", body: fd });
+  console.log(await res.json());
+})();</pre>
+          </div>
+          <div class="api-code-block api-ex-curl">
+            <div class="api-code-block__toolbar">
+              <span class="api-code-lang">curl</span>
+              <button type="button" class="api-copy-btn" aria-label="复制此段 curl 示例">复制</button>
+            </div>
+            <pre class="api-ex api-ex-curl">BASE=http://img-convert.cs.icbc
+curl -sS -F "file=@./photo.png" "$BASE/api/image/to-base64"</pre>
+          </div>
+          <div class="api-code-block api-ex-python">
+            <div class="api-code-block__toolbar">
+              <span class="api-code-lang">Python</span>
+              <button type="button" class="api-copy-btn" aria-label="复制此段 Python 示例">复制</button>
+            </div>
+            <pre class="api-ex api-ex-python">import requests
+
+BASE = "http://img-convert.cs.icbc"
+with open("photo.png", "rb") as f:
+    r = requests.post(f"{BASE}/api/image/to-base64", files={"file": f})
+print(r.json())</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <h3 class="api-endpoint__title">POST /api/base64/to-image（JSON：dataUrl 或 base64，响应为图片二进制）</h3>
+          <div class="api-code-block api-ex-nodejs is-active">
+            <div class="api-code-block__toolbar">
+              <span class="api-code-lang">Node.js</span>
+              <button type="button" class="api-copy-btn" aria-label="复制此段 Node.js 示例">复制</button>
+            </div>
+            <pre class="api-ex api-ex-nodejs">const BASE = "http://img-convert.cs.icbc";
+const fs = require("fs");
+
+(async () => {
+  const res = await fetch(BASE + "/api/base64/to-image", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      dataUrl: "data:image/png;base64,iVBORw0KGgoAAAANS...",
+    }),
+  });
+  fs.writeFileSync("decoded.png", Buffer.from(await res.arrayBuffer()));
+})();</pre>
+          </div>
+          <div class="api-code-block api-ex-curl">
+            <div class="api-code-block__toolbar">
+              <span class="api-code-lang">curl</span>
+              <button type="button" class="api-copy-btn" aria-label="复制此段 curl 示例">复制</button>
+            </div>
+            <pre class="api-ex api-ex-curl">BASE=http://img-convert.cs.icbc
+curl -sS -H "Content-Type: application/json" \
+  -d '{"dataUrl":"data:image/png;base64,iVBORw0KGgoAAAANS..."}' \
+  "$BASE/api/base64/to-image" -o decoded.png</pre>
+          </div>
+          <div class="api-code-block api-ex-python">
+            <div class="api-code-block__toolbar">
+              <span class="api-code-lang">Python</span>
+              <button type="button" class="api-copy-btn" aria-label="复制此段 Python 示例">复制</button>
+            </div>
+            <pre class="api-ex api-ex-python">import requests
+
+BASE = "http://img-convert.cs.icbc"
+r = requests.post(
+    f"{BASE}/api/base64/to-image",
+    json={"dataUrl": "data:image/png;base64,iVBORw0KGgoAAAANS..."},
+)
+open("decoded.png", "wb").write(r.content)</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <h3 class="api-endpoint__title">POST /api/svg/to-png（JSON：svg；可选 width、height）</h3>
+          <div class="api-code-block api-ex-nodejs is-active">
+            <div class="api-code-block__toolbar">
+              <span class="api-code-lang">Node.js</span>
+              <button type="button" class="api-copy-btn" aria-label="复制此段 Node.js 示例">复制</button>
+            </div>
+            <pre class="api-ex api-ex-nodejs">const BASE = "http://img-convert.cs.icbc";
+
+(async () => {
+  const svg = `&lt;svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"&gt;&lt;rect width="64" height="64" fill="#34d399"/&gt;&lt;/svg&gt;`;
+  const res = await fetch(BASE + "/api/svg/to-png", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ svg }),
+  });
+  require("fs").writeFileSync("out.png", Buffer.from(await res.arrayBuffer()));
+})();</pre>
+          </div>
+          <div class="api-code-block api-ex-curl">
+            <div class="api-code-block__toolbar">
+              <span class="api-code-lang">curl</span>
+              <button type="button" class="api-copy-btn" aria-label="复制此段 curl 示例">复制</button>
+            </div>
+            <pre class="api-ex api-ex-curl">BASE=http://img-convert.cs.icbc
+curl -sS -H "Content-Type: application/json" \
+  --data-binary @- "$BASE/api/svg/to-png" -o out.png &lt;&lt;'EOF'
+{"svg":"&lt;svg xmlns=\"http://www.w3.org/2000/svg\" width=\"64\" height=\"64\"&gt;&lt;rect width=\"64\" height=\"64\" fill=\"#34d399\"/&gt;&lt;/svg&gt;"}
+EOF</pre>
+          </div>
+          <div class="api-code-block api-ex-python">
+            <div class="api-code-block__toolbar">
+              <span class="api-code-lang">Python</span>
+              <button type="button" class="api-copy-btn" aria-label="复制此段 Python 示例">复制</button>
+            </div>
+            <pre class="api-ex api-ex-python">import requests
+
+BASE = "http://img-convert.cs.icbc"
+svg = """&lt;svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"&gt;&lt;rect width="64" height="64" fill="#34d399"/&gt;&lt;/svg&gt;"""
+r = requests.post(f"{BASE}/api/svg/to-png", json={"svg": svg})
+open("out.png", "wb").write(r.content)</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <h3 class="api-endpoint__title">POST /api/image/to-svg-wrap（multipart：file；可选 width、height）</h3>
+          <div class="api-code-block api-ex-nodejs is-active">
+            <div class="api-code-block__toolbar">
+              <span class="api-code-lang">Node.js</span>
+              <button type="button" class="api-copy-btn" aria-label="复制此段 Node.js 示例">复制</button>
+            </div>
+            <pre class="api-ex api-ex-nodejs">const BASE = "http://img-convert.cs.icbc";
+const fs = require("fs");
+const { Blob } = require("buffer");
+
+(async () => {
+  const buf = fs.readFileSync("./photo.jpg");
+  const blob = new Blob([buf], { type: "image/jpeg" });
+  const fd = new FormData();
+  fd.append("file", blob, "photo.jpg");
+  fd.append("width", "1024");
+  fd.append("height", "768");
+  const res = await fetch(BASE + "/api/image/to-svg-wrap", { method: "POST", body: fd });
+  fs.writeFileSync("wrapped.svg", await res.text());
+})();</pre>
+          </div>
+          <div class="api-code-block api-ex-curl">
+            <div class="api-code-block__toolbar">
+              <span class="api-code-lang">curl</span>
+              <button type="button" class="api-copy-btn" aria-label="复制此段 curl 示例">复制</button>
+            </div>
+            <pre class="api-ex api-ex-curl">BASE=http://img-convert.cs.icbc
+curl -sS -F "file=@./photo.jpg" -F "width=1024" -F "height=768" \
+  "$BASE/api/image/to-svg-wrap" -o wrapped.svg</pre>
+          </div>
+          <div class="api-code-block api-ex-python">
+            <div class="api-code-block__toolbar">
+              <span class="api-code-lang">Python</span>
+              <button type="button" class="api-copy-btn" aria-label="复制此段 Python 示例">复制</button>
+            </div>
+            <pre class="api-ex api-ex-python">import requests
+
+BASE = "http://img-convert.cs.icbc"
+with open("photo.jpg", "rb") as f:
+    r = requests.post(
+        f"{BASE}/api/image/to-svg-wrap",
+        files={"file": f},
+        data={"width": "1024", "height": "768"},
+    )
+open("wrapped.svg", "w", encoding="utf-8").write(r.text)</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <h3 class="api-endpoint__title">POST /api/image/compress（multipart：file；可选 maxEdge、format=webp|jpeg|png）</h3>
+          <div class="api-code-block api-ex-nodejs is-active">
+            <div class="api-code-block__toolbar">
+              <span class="api-code-lang">Node.js</span>
+              <button type="button" class="api-copy-btn" aria-label="复制此段 Node.js 示例">复制</button>
+            </div>
+            <pre class="api-ex api-ex-nodejs">const BASE = "http://img-convert.cs.icbc";
+const fs = require("fs");
+const { Blob } = require("buffer");
+
+(async () => {
+  const buf = fs.readFileSync("./large.png");
+  const blob = new Blob([buf], { type: "image/png" });
+  const fd = new FormData();
+  fd.append("file", blob, "large.png");
+  fd.append("maxEdge", "1600");
+  fd.append("format", "jpeg");
+  const res = await fetch(BASE + "/api/image/compress", { method: "POST", body: fd });
+  fs.writeFileSync("small.jpg", Buffer.from(await res.arrayBuffer()));
+})();</pre>
+          </div>
+          <div class="api-code-block api-ex-curl">
+            <div class="api-code-block__toolbar">
+              <span class="api-code-lang">curl</span>
+              <button type="button" class="api-copy-btn" aria-label="复制此段 curl 示例">复制</button>
+            </div>
+            <pre class="api-ex api-ex-curl">BASE=http://img-convert.cs.icbc
+curl -sS -F "file=@./large.png" -F "maxEdge=1600" -F "format=jpeg" \
+  "$BASE/api/image/compress" -o small.jpg</pre>
+          </div>
+          <div class="api-code-block api-ex-python">
+            <div class="api-code-block__toolbar">
+              <span class="api-code-lang">Python</span>
+              <button type="button" class="api-copy-btn" aria-label="复制此段 Python 示例">复制</button>
+            </div>
+            <pre class="api-ex api-ex-python">import requests
+
+BASE = "http://img-convert.cs.icbc"
+with open("large.png", "rb") as f:
+    r = requests.post(
+        f"{BASE}/api/image/compress",
+        files={"file": f},
+        data={"maxEdge": "1600", "format": "jpeg"},
+    )
+open("small.jpg", "wb").write(r.content)</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <h3 class="api-endpoint__title">POST /api/image/convert（multipart：file；format=png|jpeg|webp|avif；可选 maxEdge、quality）</h3>
+          <div class="api-code-block api-ex-nodejs is-active">
+            <div class="api-code-block__toolbar">
+              <span class="api-code-lang">Node.js</span>
+              <button type="button" class="api-copy-btn" aria-label="复制此段 Node.js 示例">复制</button>
+            </div>
+            <pre class="api-ex api-ex-nodejs">const BASE = "http://img-convert.cs.icbc";
+const fs = require("fs");
+const { Blob } = require("buffer");
+
+(async () => {
+  const buf = fs.readFileSync("./photo.png");
+  const blob = new Blob([buf], { type: "image/png" });
+  const fd = new FormData();
+  fd.append("file", blob, "photo.png");
+  fd.append("format", "webp");
+  fd.append("quality", "85");
+  fd.append("maxEdge", "1920");
+  const res = await fetch(BASE + "/api/image/convert", { method: "POST", body: fd });
+  fs.writeFileSync("out.webp", Buffer.from(await res.arrayBuffer()));
+})();</pre>
+          </div>
+          <div class="api-code-block api-ex-curl">
+            <div class="api-code-block__toolbar">
+              <span class="api-code-lang">curl</span>
+              <button type="button" class="api-copy-btn" aria-label="复制此段 curl 示例">复制</button>
+            </div>
+            <pre class="api-ex api-ex-curl">BASE=http://img-convert.cs.icbc
+curl -sS -F "file=@./photo.png" -F "format=webp" -F "quality=85" \
+  "$BASE/api/image/convert" -o out.webp</pre>
+          </div>
+          <div class="api-code-block api-ex-python">
+            <div class="api-code-block__toolbar">
+              <span class="api-code-lang">Python</span>
+              <button type="button" class="api-copy-btn" aria-label="复制此段 Python 示例">复制</button>
+            </div>
+            <pre class="api-ex api-ex-python">import requests
+
+BASE = "http://img-convert.cs.icbc"
+with open("photo.png", "rb") as f:
+    r = requests.post(
+        f"{BASE}/api/image/convert",
+        files={"file": f},
+        data={"format": "webp", "quality": "85", "maxEdge": "1920"},
+    )
+open("out.webp", "wb").write(r.content)</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>由 Nginx 静态托管；格式导出与「格式互转」依赖 API · 说明见「API 调用」</footer>
   </div>
 
   <div class="toast" id="toast" role="status"></div>
@@ -450,6 +1419,290 @@
         toastTimer = setTimeout(function () {
           toastEl.classList.remove("show");
         }, 2600);
+      }
+
+      function copyTextToClipboard(text, okMsg, errMsg, onDone, opts) {
+        var useBar = opts && opts.useProgressBar;
+        var str = text == null ? "" : String(text);
+        if (!str) {
+          if (useBar) hideGlobalProgressImmediate();
+          toast(errMsg || "没有可复制的内容", true);
+          if (onDone) onDone(false);
+          return;
+        }
+        if (useBar) {
+          showGlobalProgress("正在复制到剪贴板…", 14);
+          requestAnimationFrame(function () {
+            setGlobalProgress(46);
+          });
+        }
+        function finishOk() {
+          if (useBar) {
+            setGlobalProgress(100);
+            hideGlobalProgressSoon(320);
+          }
+          toast(okMsg || "已复制");
+          if (onDone) onDone(true);
+        }
+        var clip = navigator.clipboard;
+        if (clip && typeof clip.writeText === "function") {
+          clip.writeText(str).then(function () {
+            finishOk();
+          }).catch(function () {
+            fallbackCopyTextToClipboard(str, okMsg, errMsg, onDone, useBar);
+          });
+        } else {
+          fallbackCopyTextToClipboard(str, okMsg, errMsg, onDone, useBar);
+        }
+      }
+
+      function fallbackCopyTextToClipboard(str, okMsg, errMsg, onDone, useBar) {
+        var ta = document.createElement("textarea");
+        ta.value = str;
+        ta.setAttribute("readonly", "readonly");
+        ta.style.cssText = "position:fixed;left:-2000px;top:0;width:2px;height:2px;opacity:0;";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try {
+          ta.setSelectionRange(0, str.length);
+        } catch (e0) { /* ignore */ }
+        var ok = false;
+        try {
+          ok = document.execCommand("copy");
+        } catch (e1) { /* ignore */ }
+        document.body.removeChild(ta);
+        if (ok) {
+          if (useBar) {
+            setGlobalProgress(100);
+            hideGlobalProgressSoon(320);
+          }
+          toast(okMsg || "已复制");
+          if (onDone) onDone(true);
+        } else {
+          if (useBar) hideGlobalProgressImmediate();
+          toast(errMsg || "复制失败：内网 HTTP 下剪贴板常受限，请使用 HTTPS 或在浏览器中允许本站访问剪贴板", true);
+          if (onDone) onDone(false);
+        }
+      }
+
+      function clearPreviewLayout(boxEl) {
+        if (boxEl && boxEl._previewLayoutCleanup) {
+          boxEl._previewLayoutCleanup();
+          boxEl._previewLayoutCleanup = null;
+        }
+      }
+
+      /**
+       * 预览区：load 后读取 naturalWidth/Height，先按容器可用宽度铺满横向，高度随比例；
+       * 若高度超过视口上限再整体等比缩小。Base64 / HTML / SVG 三处一致。
+       */
+      function bindPreviewImageLayout(img, boxEl) {
+        clearPreviewLayout(boxEl);
+        function maxPreviewHeight() {
+          return Math.min(window.innerHeight * 0.85, 1200);
+        }
+        function layout() {
+          if (!img.isConnected || !boxEl.isConnected) return;
+          var nw = img.naturalWidth;
+          var nh = img.naturalHeight;
+          if (!nw || !nh) return;
+          var cs = getComputedStyle(boxEl);
+          var padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+          var cw = Math.max(1, boxEl.clientWidth - padX);
+          var mh = maxPreviewHeight();
+          var w = cw;
+          var h = (nh / nw) * w;
+          if (h > mh) {
+            h = mh;
+            w = (nw / nh) * h;
+          }
+          img.style.width = Math.round(w) + "px";
+          img.style.height = Math.round(h) + "px";
+        }
+        function onLoad() {
+          layout();
+        }
+        if (img.complete && img.naturalWidth) {
+          onLoad();
+        } else {
+          img.addEventListener("load", onLoad);
+        }
+        var onWinResize = function () {
+          if (img.naturalWidth) layout();
+        };
+        window.addEventListener("resize", onWinResize);
+        if (window.ResizeObserver) {
+          var ro = new ResizeObserver(function () {
+            if (img.naturalWidth) layout();
+          });
+          ro.observe(boxEl);
+          boxEl._previewLayoutCleanup = function () {
+            ro.disconnect();
+            window.removeEventListener("resize", onWinResize);
+          };
+        } else {
+          boxEl._previewLayoutCleanup = function () {
+            window.removeEventListener("resize", onWinResize);
+          };
+        }
+      }
+
+      function extForFormat(f) {
+        if (f === "jpeg") return "jpg";
+        return f;
+      }
+
+      function mimeForFormat(f) {
+        return (
+          { png: "image/png", jpeg: "image/jpeg", webp: "image/webp", avif: "image/avif" }[f] || "image/png"
+        );
+      }
+
+      function needsServerConvert(blob, format) {
+        var t = (blob.type || "").toLowerCase();
+        var want = mimeForFormat(format);
+        if (t && t === want) return false;
+        if (format === "png" && t === "image/png") return false;
+        if (format === "jpeg" && (t === "image/jpeg" || t === "image/jpg")) return false;
+        if (format === "webp" && t === "image/webp") return false;
+        if (format === "avif" && t === "image/avif") return false;
+        return true;
+      }
+
+      function convertBlobServer(blob, format, opts, cb) {
+        opts = opts || {};
+        var fd = new FormData();
+        fd.append("file", blob, "image");
+        fd.append("format", format);
+        if (opts.maxEdge != null && opts.maxEdge !== "") fd.append("maxEdge", String(opts.maxEdge));
+        if (opts.quality != null && opts.quality !== "") fd.append("quality", String(opts.quality));
+        showGlobalProgress("正在转换格式…", 28);
+        fetch("/api/image/convert", { method: "POST", body: fd })
+          .then(function (r) {
+            if (!r.ok) {
+              return r.json().then(function (j) {
+                throw new Error(j.error || "HTTP " + r.status);
+              });
+            }
+            return r.blob();
+          })
+          .then(function (out) {
+            setGlobalProgress(100);
+            hideGlobalProgressSoon();
+            cb(null, out);
+          })
+          .catch(function (e) {
+            hideGlobalProgressImmediate();
+            toast(e.message || "格式转换失败（需后端 API，请确认已启动 docker-compose）", true);
+            cb(e);
+          });
+      }
+
+      function triggerDownloadBlob(blob, filename) {
+        var u = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = u;
+        a.download = filename;
+        a.click();
+        setTimeout(function () {
+          URL.revokeObjectURL(u);
+        }, 2500);
+        toast("已开始下载");
+      }
+
+      function downloadImageBlobWithFormat(blob, format, baseName, opts) {
+        if (!needsServerConvert(blob, format)) {
+          triggerDownloadBlob(blob, baseName + "." + extForFormat(format));
+          return;
+        }
+        convertBlobServer(blob, format, opts, function (err, out) {
+          if (err) return;
+          triggerDownloadBlob(out, baseName + "." + extForFormat(format));
+        });
+      }
+
+      function downloadImageDataUrlWithFormat(dataUrl, format, baseName, opts) {
+        fetch(dataUrl)
+          .then(function (r) {
+            return r.blob();
+          })
+          .then(function (blob) {
+            downloadImageBlobWithFormat(blob, format, baseName, opts);
+          })
+          .catch(function () {
+            toast("无法读取图片数据", true);
+          });
+      }
+
+      function extractHtmlForForeignObject(raw) {
+        var s = String(raw).trim();
+        if (!s) return s;
+        var bm = s.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+        if (bm) {
+          return bm[1].trim();
+        }
+        if (/^<!DOCTYPE/i.test(s) || /<html[\s>]/i.test(s)) {
+          var noHead = s.replace(/<head[\s\S]*?<\/head>/gi, "");
+          var inner = noHead.replace(/^[\s\S]*?<html[^>]*>/i, "").replace(/<\/html>[\s\S]*$/i, "").trim();
+          if (inner) {
+            return inner;
+          }
+        }
+        return s;
+      }
+
+      function extractFirstImageDataUrlFromHtml(htmlRaw) {
+        var raw = String(htmlRaw).trim();
+        if (!raw) return null;
+        if (/^data:image\//i.test(raw)) {
+          return raw.replace(/\s/g, "");
+        }
+        var inner = extractHtmlForForeignObject(raw);
+        var parts = [inner, raw];
+        var i;
+        for (i = 0; i < parts.length; i++) {
+          var m = parts[i].match(/src\s*=\s*["'](data:image\/[^"']+)["']/i);
+          if (m) return m[1].replace(/\s/g, "");
+        }
+        for (i = 0; i < parts.length; i++) {
+          m = parts[i].match(/src\s*=\s*(data:image\/[^\s>]+)/i);
+          if (m) return m[1].replace(/["']/g, "").replace(/\s/g, "");
+        }
+        return null;
+      }
+
+      function stripLeadingXmlDeclaration(s) {
+        return String(s).replace(/^\s*<\?xml[\s\S]*?\?>\s*/i, "").trim();
+      }
+
+      function isLikelySvgDocument(text) {
+        return /^<svg\b/i.test(stripLeadingXmlDeclaration(String(text).trim()));
+      }
+
+      function buildSvgForeignObjectString(width, height, innerHtml) {
+        var svgNS = "http://www.w3.org/2000/svg";
+        var xhtmlNS = "http://www.w3.org/1999/xhtml";
+        var svg = document.createElementNS(svgNS, "svg");
+        svg.setAttribute("xmlns", svgNS);
+        svg.setAttribute("width", String(width));
+        svg.setAttribute("height", String(height));
+        var fo = document.createElementNS(svgNS, "foreignObject");
+        fo.setAttribute("width", "100%");
+        fo.setAttribute("height", "100%");
+        var wrap = document.createElementNS(xhtmlNS, "div");
+        wrap.setAttribute("xmlns", xhtmlNS);
+        wrap.style.boxSizing = "border-box";
+        wrap.style.width = width + "px";
+        wrap.style.height = height + "px";
+        wrap.style.overflow = "hidden";
+        wrap.style.background = "#fff";
+        wrap.style.color = "#111";
+        wrap.style.fontFamily = "system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif";
+        wrap.innerHTML = innerHtml;
+        fo.appendChild(wrap);
+        svg.appendChild(fo);
+        return new XMLSerializer().serializeToString(svg);
       }
 
       function stripDataUrlPrefix(s) {
@@ -486,6 +1739,18 @@
         r.readAsDataURL(blob);
       }
 
+      function fileToDataUrl(file, cb) {
+        var r = new FileReader();
+        r.onload = function () {
+          cb(r.result);
+        };
+        r.onerror = function () {
+          hideGlobalProgressSoon(200);
+          toast("读取文件失败", true);
+        };
+        r.readAsDataURL(file);
+      }
+
       var canvas2dOpts = { alpha: true, desynchronized: true };
 
       function get2dContext(canvas) {
@@ -496,8 +1761,228 @@
         }
       }
 
-      /* Tabs */
+      var LARGE_FILE_BYTES = 2 * 1024 * 1024;
+      var LARGE_PIXEL_EDGE = 1920;
+      var COMPRESS_MAX_EDGE = 1920;
+      var JPEG_QUALITY = 0.82;
+
+      var gProgEl = document.getElementById("global-progress");
+      var gProgFill = document.getElementById("global-progress-fill");
+      var gProgLabel = document.getElementById("global-progress-label");
+      var gProgPct = document.getElementById("global-progress-pct");
+      var gProgHideT;
+      var largeModalResolver = null;
+
+      function formatBytes(n) {
+        if (n < 1024) return n + " B";
+        if (n < 1048576) return (n / 1024).toFixed(1) + " KB";
+        return (n / 1048576).toFixed(2) + " MB";
+      }
+
+      function showGlobalProgress(label, pct) {
+        clearTimeout(gProgHideT);
+        gProgLabel.textContent = label;
+        gProgEl.classList.add("is-visible");
+        gProgEl.setAttribute("aria-hidden", "false");
+        setGlobalProgress(pct != null ? pct : 0);
+      }
+
+      function setGlobalProgress(p) {
+        p = Math.min(100, Math.max(0, p));
+        gProgFill.style.width = p + "%";
+        gProgPct.textContent = Math.round(p) + "%";
+      }
+
+      function hideGlobalProgressSoon(ms) {
+        clearTimeout(gProgHideT);
+        setGlobalProgress(100);
+        var d = ms == null ? 420 : ms;
+        gProgHideT = setTimeout(function () {
+          gProgEl.classList.remove("is-visible");
+          gProgEl.setAttribute("aria-hidden", "true");
+          gProgFill.style.width = "0%";
+          gProgPct.textContent = "0%";
+        }, d);
+      }
+
+      function hideGlobalProgressImmediate() {
+        clearTimeout(gProgHideT);
+        gProgEl.classList.remove("is-visible");
+        gProgEl.setAttribute("aria-hidden", "true");
+        gProgFill.style.width = "0%";
+        gProgPct.textContent = "0%";
+      }
+
+      function probeImageMeta(file, cb) {
+        var u = URL.createObjectURL(file);
+        var img = new Image();
+        img.onload = function () {
+          URL.revokeObjectURL(u);
+          cb({ w: img.naturalWidth, h: img.naturalHeight });
+        };
+        img.onerror = function () {
+          URL.revokeObjectURL(u);
+          cb({ w: 0, h: 0 });
+        };
+        img.src = u;
+      }
+
+      function compressImageBlob(file, reportPct, callback) {
+        reportPct(20);
+        var url = URL.createObjectURL(file);
+        var img = new Image();
+        img.onload = function () {
+          reportPct(38);
+          var nw = img.naturalWidth;
+          var nh = img.naturalHeight;
+          var scale = Math.min(1, COMPRESS_MAX_EDGE / Math.max(nw, nh, 1));
+          var tw = Math.max(1, Math.round(nw * scale));
+          var th = Math.max(1, Math.round(nh * scale));
+          var canvas = document.createElement("canvas");
+          canvas.width = tw;
+          canvas.height = th;
+          var ctx = get2dContext(canvas);
+          ctx.drawImage(img, 0, 0, tw, th);
+          URL.revokeObjectURL(url);
+          reportPct(58);
+          var tries = [
+            { type: "image/webp", q: 0.8 },
+            { type: "image/jpeg", q: JPEG_QUALITY },
+            { type: "image/png" }
+          ];
+          var i = 0;
+          function tryNext() {
+            if (i >= tries.length) {
+              callback(null);
+              return;
+            }
+            var t = tries[i++];
+            canvas.toBlob(function (blob) {
+              if (blob && blob.size > 0) {
+                reportPct(92);
+                callback(blob);
+              } else {
+                tryNext();
+              }
+            }, t.type, t.q);
+          }
+          tryNext();
+        };
+        img.onerror = function () {
+          URL.revokeObjectURL(url);
+          callback(null);
+        };
+        img.src = url;
+      }
+
+      function openLargeImageModal(metaText, onChoice) {
+        largeModalResolver = onChoice;
+        document.getElementById("large-img-modal-meta").textContent = metaText;
+        var el = document.getElementById("large-img-modal");
+        el.classList.add("is-open");
+        el.setAttribute("aria-hidden", "false");
+      }
+
+      function closeLargeImageModal() {
+        document.getElementById("large-img-modal").classList.remove("is-open");
+        document.getElementById("large-img-modal").setAttribute("aria-hidden", "true");
+      }
+
+      document.getElementById("large-img-compress").addEventListener("click", function () {
+        if (!largeModalResolver) return;
+        var r = largeModalResolver;
+        largeModalResolver = null;
+        closeLargeImageModal();
+        r("compress");
+      });
+
+      document.getElementById("large-img-original").addEventListener("click", function () {
+        if (!largeModalResolver) return;
+        var r = largeModalResolver;
+        largeModalResolver = null;
+        closeLargeImageModal();
+        r("original");
+      });
+
+      document.getElementById("large-img-cancel").addEventListener("click", function () {
+        if (!largeModalResolver) return;
+        var r = largeModalResolver;
+        largeModalResolver = null;
+        closeLargeImageModal();
+        r("cancel");
+      });
+
+      document.getElementById("large-img-modal").addEventListener("click", function (e) {
+        if (e.target === e.currentTarget) {
+          document.getElementById("large-img-cancel").click();
+        }
+      });
+
+      document.addEventListener("keydown", function (e) {
+        if (e.key !== "Escape") return;
+        var m = document.getElementById("large-img-modal");
+        if (m.classList.contains("is-open")) {
+          document.getElementById("large-img-cancel").click();
+        }
+      });
+
+      function routeImageUpload(file, onDataUrl) {
+        showGlobalProgress("正在分析图片…", 8);
+        probeImageMeta(file, function (meta) {
+          setGlobalProgress(32);
+          var bySize = file.size >= LARGE_FILE_BYTES;
+          var byPixel = meta.w > 0 && meta.h > 0 && Math.max(meta.w, meta.h) > LARGE_PIXEL_EDGE;
+          function pushResult(dataUrl, kind) {
+            setGlobalProgress(100);
+            hideGlobalProgressSoon();
+            onDataUrl(dataUrl, kind);
+          }
+          if (!bySize && !byPixel) {
+            setGlobalProgress(62);
+            fileToDataUrl(file, function (du) {
+              pushResult(du, "normal");
+            });
+            return;
+          }
+          var metaLines =
+            "文件：" + (file.name || "未命名") +
+            "\n大小：" + formatBytes(file.size) +
+            "\n尺寸：" + (meta.w && meta.h ? meta.w + " × " + meta.h + " px" : "未知");
+          hideGlobalProgressImmediate();
+          openLargeImageModal(metaLines, function (choice) {
+            if (choice === "cancel") {
+              return;
+            }
+            if (choice === "original") {
+              showGlobalProgress("正在载入原图…", 22);
+              fileToDataUrl(file, function (du) {
+                pushResult(du, "original");
+              });
+            } else {
+              showGlobalProgress("正在压缩图片…", 14);
+              compressImageBlob(file, setGlobalProgress, function (blob) {
+                if (!blob) {
+                  hideGlobalProgressSoon(200);
+                  toast("压缩失败", true);
+                  return;
+                }
+                setGlobalProgress(88);
+                fileToDataUrl(blob, function (du) {
+                  pushResult(du, "compress");
+                });
+              });
+            }
+          });
+        });
+      }
+
+      /* Tabs：阻止鼠标点击时抢占焦点，避免旧版内核在深色页面上画出刺眼的浅色聚焦框 */
       document.querySelectorAll(".tab").forEach(function (btn) {
+        btn.addEventListener("mousedown", function (e) {
+          if (e.button === 0) {
+            e.preventDefault();
+          }
+        });
         btn.addEventListener("click", function () {
           var id = btn.getAttribute("data-tab");
           document.querySelectorAll(".tab").forEach(function (b) {
@@ -514,26 +1999,33 @@
       var b64In = document.getElementById("b64-in");
       var b64Preview = document.getElementById("b64-preview");
       var b64Download = document.getElementById("b64-download");
+      var b64DownloadFormat = document.getElementById("b64-download-format");
       var b64DataUrl = "";
 
       function setB64Preview(url) {
         b64DataUrl = url;
+        clearPreviewLayout(b64Preview);
         b64Preview.classList.remove("empty");
         b64Preview.innerHTML = "";
         var img = document.createElement("img");
+        img.className = "preview-img";
         img.alt = "preview";
         img.src = url;
         img.onerror = function () {
+          clearPreviewLayout(b64Preview);
           b64Preview.classList.add("empty");
           b64Preview.textContent = "无法解析为图片";
           b64Download.disabled = true;
+          b64DownloadFormat.disabled = true;
           b64DataUrl = "";
           toast("Base64 无效或不是图片", true);
         };
         img.onload = function () {
           b64Download.disabled = false;
+          b64DownloadFormat.disabled = false;
         };
         b64Preview.appendChild(img);
+        bindPreviewImageLayout(img, b64Preview);
       }
 
       document.getElementById("b64-decode").addEventListener("click", function () {
@@ -548,48 +2040,42 @@
         } else {
           url = withDataUrl(raw, detectMimeFromB64(raw));
         }
-        setB64Preview(url);
+        showGlobalProgress("正在解码预览…", 35);
+        requestAnimationFrame(function () {
+          setB64Preview(url);
+          setGlobalProgress(100);
+          hideGlobalProgressSoon(280);
+          toast("解码完成");
+        });
       });
 
       document.getElementById("b64-copy").addEventListener("click", function () {
         var raw = b64In.value.trim();
         var plain = stripDataUrlPrefix(raw);
-        if (!plain) {
-          toast("没有可复制的内容", true);
-          return;
-        }
-        navigator.clipboard.writeText(plain).then(function () {
-          toast("已复制纯 Base64");
-        }).catch(function () {
-          toast("复制失败", true);
-        });
+        copyTextToClipboard(plain, "已复制纯 Base64", "没有可复制的内容", undefined, { useProgressBar: true });
       });
 
       document.getElementById("b64-download").addEventListener("click", function () {
         if (!b64DataUrl) return;
-        var a = document.createElement("a");
-        a.href = b64DataUrl;
-        a.download = "image-from-base64.png";
-        a.click();
-        toast("已开始下载");
+        var fmt = b64DownloadFormat.value;
+        downloadImageDataUrlWithFormat(b64DataUrl, fmt, "image-from-base64", {});
       });
 
-      function fileToDataUrl(file, cb) {
-        var r = new FileReader();
-        r.onload = function () { cb(r.result); };
-        r.onerror = function () { toast("读取文件失败", true); };
-        r.readAsDataURL(file);
+      function finishB64Upload(dataUrl, kind) {
+        b64In.value = dataUrl;
+        setB64Preview(dataUrl);
+        if (kind === "compress") {
+          toast("已按压缩图载入并填入 Data URL");
+        } else {
+          toast("已加载图片并填入 Data URL");
+        }
       }
 
       document.getElementById("b64-file").addEventListener("change", function (e) {
         var f = e.target.files && e.target.files[0];
         if (!f) return;
-        fileToDataUrl(f, function (dataUrl) {
-          b64In.value = dataUrl;
-          setB64Preview(dataUrl);
-          toast("已加载图片并填入 Data URL");
-        });
         e.target.value = "";
+        routeImageUpload(f, finishB64Upload);
       });
 
       function setupDrop(zoneId, inputId, handler) {
@@ -615,69 +2101,140 @@
       }
 
       setupDrop("b64-drop", "b64-file", function (f) {
-        fileToDataUrl(f, function (dataUrl) {
-          b64In.value = dataUrl;
-          setB64Preview(dataUrl);
-          toast("已加载图片");
-        });
+        routeImageUpload(f, finishB64Upload);
       });
 
       /* HTML panel */
       var htmlIn = document.getElementById("html-in");
       var htmlPreview = document.getElementById("html-preview");
       var htmlDownload = document.getElementById("html-download");
+      var htmlDownloadFormat = document.getElementById("html-download-format");
       var htmlPngBlobUrl = "";
       var htmlPngBlob = null;
 
+      function commitHtmlToPngCanvas(canvas, revokeUrl) {
+        if (revokeUrl) URL.revokeObjectURL(revokeUrl);
+        setGlobalProgress(72);
+        canvas.toBlob(function (pngBlob) {
+          if (!pngBlob) {
+            hideGlobalProgressImmediate();
+            toast("无法导出 PNG（画布可能被浏览器安全策略限制）", true);
+            return;
+          }
+          if (htmlPngBlobUrl) URL.revokeObjectURL(htmlPngBlobUrl);
+          htmlPngBlob = pngBlob;
+          htmlPngBlobUrl = URL.createObjectURL(pngBlob);
+          clearPreviewLayout(htmlPreview);
+          htmlPreview.classList.remove("empty");
+          htmlPreview.innerHTML = "";
+          var out = document.createElement("img");
+          out.className = "preview-img";
+          out.src = htmlPngBlobUrl;
+          out.alt = "rendered";
+          htmlPreview.appendChild(out);
+          bindPreviewImageLayout(out, htmlPreview);
+          htmlDownload.disabled = false;
+          htmlDownloadFormat.disabled = false;
+          setGlobalProgress(100);
+          hideGlobalProgressSoon();
+          toast("已渲染为 PNG");
+        }, "image/png");
+      }
+
       document.getElementById("html-to-img").addEventListener("click", function () {
-        var html = htmlIn.value.trim();
-        if (!html) {
+        var htmlRaw = htmlIn.value.trim();
+        if (!htmlRaw) {
           toast("请输入 HTML", true);
           return;
         }
         htmlPngBlob = null;
-        var w = parseInt(document.getElementById("html-w").value, 10) || 800;
-        var h = parseInt(document.getElementById("html-h").value, 10) || 600;
-        var wrapped =
-          "<div xmlns=\"http://www.w3.org/1999/xhtml\" style=\"box-sizing:border-box;width:" + w + "px;height:" + h + "px;overflow:hidden;background:#fff;color:#111;font-family:system-ui,sans-serif;\">" +
-          html +
-          "</div>";
-        var svg =
-          "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" + w + "\" height=\"" + h + "\">" +
-          "<foreignObject width=\"100%\" height=\"100%\">" + wrapped + "</foreignObject></svg>";
-        var blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+        if (htmlPngBlobUrl) {
+          URL.revokeObjectURL(htmlPngBlobUrl);
+          htmlPngBlobUrl = "";
+        }
+        htmlDownload.disabled = true;
+        htmlDownloadFormat.disabled = true;
+        showGlobalProgress("正在渲染 HTML…", 12);
+        var foW = 800;
+        var foH = 600;
+
+        var embeddedDataUrl = extractFirstImageDataUrlFromHtml(htmlRaw);
+        if (embeddedDataUrl) {
+          var srcImg = new Image();
+          function drawDataUrlPath() {
+            setGlobalProgress(48);
+            try {
+              var nw = srcImg.naturalWidth || 800;
+              var nh = srcImg.naturalHeight || 600;
+              var cw = Math.min(4096, Math.max(1, nw));
+              var ch = Math.min(4096, Math.max(1, nh));
+              var canvas = document.createElement("canvas");
+              canvas.width = cw;
+              canvas.height = ch;
+              var ctx = get2dContext(canvas);
+              ctx.drawImage(srcImg, 0, 0, cw, ch);
+              commitHtmlToPngCanvas(canvas, null);
+            } catch (err) {
+              hideGlobalProgressImmediate();
+              toast(err && err.name === "SecurityError" ? "渲染失败：图片数据被浏览器策略拦截" : "渲染失败：无法绘制内嵌图片", true);
+            }
+          }
+          srcImg.onload = function () {
+            if (typeof srcImg.decode === "function") {
+              srcImg.decode().then(drawDataUrlPath).catch(drawDataUrlPath);
+            } else {
+              drawDataUrlPath();
+            }
+          };
+          srcImg.onerror = function () {
+            hideGlobalProgressImmediate();
+            toast("无法解析 HTML 中的 data URL 图片", true);
+          };
+          srcImg.src = embeddedDataUrl;
+          return;
+        }
+
+        var html = extractHtmlForForeignObject(htmlRaw);
+        var svgStr;
+        try {
+          svgStr = buildSvgForeignObjectString(foW, foH, html);
+        } catch (e0) {
+          hideGlobalProgressImmediate();
+          toast("HTML 片段无法嵌入 SVG（请检查标签是否闭合）", true);
+          return;
+        }
+        var blob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
         var url = URL.createObjectURL(blob);
         var img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = function () {
+        function drawForeignObjectPath() {
+          setGlobalProgress(48);
           try {
             var canvas = document.createElement("canvas");
-            canvas.width = w;
-            canvas.height = h;
+            canvas.width = foW;
+            canvas.height = foH;
             var ctx = get2dContext(canvas);
             ctx.drawImage(img, 0, 0);
-            URL.revokeObjectURL(url);
-            canvas.toBlob(function (blob) {
-              if (htmlPngBlobUrl) URL.revokeObjectURL(htmlPngBlobUrl);
-              htmlPngBlob = blob;
-              htmlPngBlobUrl = URL.createObjectURL(blob);
-              htmlPreview.classList.remove("empty");
-              htmlPreview.innerHTML = "";
-              var out = document.createElement("img");
-              out.src = htmlPngBlobUrl;
-              out.alt = "rendered";
-              htmlPreview.appendChild(out);
-              htmlDownload.disabled = false;
-              toast("已渲染为 PNG");
-            }, "image/png");
+            commitHtmlToPngCanvas(canvas, url);
           } catch (err) {
             URL.revokeObjectURL(url);
-            toast("渲染失败（浏览器可能限制跨域或内容）", true);
+            hideGlobalProgressImmediate();
+            var hint = err && err.name === "SecurityError"
+              ? "浏览器安全策略（或 HTML 内含非 data URL 的跨域资源）"
+              : "绘制失败，请简化 HTML 或缩小画布尺寸";
+            toast("渲染失败：" + hint, true);
+          }
+        }
+        img.onload = function () {
+          if (typeof img.decode === "function") {
+            img.decode().then(drawForeignObjectPath).catch(drawForeignObjectPath);
+          } else {
+            drawForeignObjectPath();
           }
         };
         img.onerror = function () {
           URL.revokeObjectURL(url);
-          toast("无法加载 HTML 渲染结果", true);
+          hideGlobalProgressImmediate();
+          toast("无法加载 HTML 渲染结果（SVG 无效或含不支持的资源）", true);
         };
         img.src = url;
       });
@@ -685,70 +2242,96 @@
       document.getElementById("html-copy-out").addEventListener("click", function () {
         function copySnippet(dataUrl) {
           var snippet = "<img src=\"" + dataUrl + "\" alt=\"image\" />";
-          navigator.clipboard.writeText(snippet).then(function () {
-            toast("已复制带 data URL 的 img 标签");
-          }).catch(function () {
-            toast("复制失败", true);
-          });
+          copyTextToClipboard(snippet, "已复制带 data URL 的 img 标签", "复制失败", undefined, { useProgressBar: true });
         }
         if (htmlPngBlob) {
-          blobToDataUrl(htmlPngBlob, copySnippet);
+          showGlobalProgress("正在准备复制…", 22);
+          blobToDataUrl(htmlPngBlob, function (dataUrl) {
+            setGlobalProgress(52);
+            copySnippet(dataUrl);
+          });
           return;
         }
         var img = htmlPreview.querySelector("img");
-        if (!img || !img.src) {
-          toast("请先渲染 PNG 或上传图片生成 HTML", true);
+        if (img && img.src) {
+          copySnippet(img.src);
           return;
         }
-        copySnippet(img.src);
+        if (htmlIn.value.trim()) {
+          copyTextToClipboard(htmlIn.value.trim(), "已复制左侧 HTML 文本", "没有可复制的内容", undefined, { useProgressBar: true });
+          return;
+        }
+        toast("请先渲染 PNG、上传图片或输入 HTML", true);
       });
 
       document.getElementById("html-download").addEventListener("click", function () {
-        if (!htmlPngBlobUrl) return;
-        var a = document.createElement("a");
-        a.href = htmlPngBlobUrl;
-        a.download = "html-render.png";
-        a.click();
-        toast("已开始下载");
+        if (!htmlPngBlobUrl && !htmlPngBlob) return;
+        var fmt = htmlDownloadFormat.value;
+        function go(blob) {
+          downloadImageBlobWithFormat(blob, fmt, "html-render", {});
+        }
+        if (htmlPngBlob) {
+          go(htmlPngBlob);
+        } else {
+          fetch(htmlPngBlobUrl)
+            .then(function (r) {
+              return r.blob();
+            })
+            .then(go)
+            .catch(function () {
+              toast("无法读取渲染图", true);
+            });
+        }
       });
 
-      function imageFileToHtmlSnippet(file) {
-        fileToDataUrl(file, function (dataUrl) {
-          var snippet = "<!DOCTYPE html>\n<html lang=\"zh-CN\">\n<head><meta charset=\"UTF-8\" /><title>embedded</title></head>\n<body>\n<img src=\"" + dataUrl + "\" alt=\"image\" style=\"max-width:100%;height:auto;\" />\n</body>\n</html>";
-          htmlIn.value = snippet;
-          htmlPreview.classList.remove("empty");
-          htmlPreview.innerHTML = "";
-          var pre = document.createElement("pre");
-          pre.style.margin = "0";
-          pre.style.whiteSpace = "pre-wrap";
-          pre.style.wordBreak = "break-all";
-          pre.style.fontSize = "0.7rem";
-          pre.style.color = "var(--muted)";
-          pre.textContent = snippet.slice(0, 2000) + (snippet.length > 2000 ? "\n…" : "");
-          htmlPreview.appendChild(pre);
-          htmlDownload.disabled = true;
-          htmlPngBlob = null;
-          if (htmlPngBlobUrl) {
-            URL.revokeObjectURL(htmlPngBlobUrl);
-            htmlPngBlobUrl = "";
-          }
-          toast("已生成 HTML（完整内容在左侧文本框）");
-        });
+      function imageHtmlFromDataUrl(dataUrl, kind) {
+        var snippet = "<!DOCTYPE html>\n<html lang=\"zh-CN\">\n<head><meta charset=\"UTF-8\" /><title>embedded</title></head>\n<body>\n<img src=\"" + dataUrl + "\" alt=\"image\" style=\"max-width:100%;height:auto;\" />\n</body>\n</html>";
+        htmlIn.value = snippet;
+        clearPreviewLayout(htmlPreview);
+        htmlPreview.classList.remove("empty");
+        htmlPreview.innerHTML = "";
+        var pv = document.createElement("img");
+        pv.className = "preview-img";
+        pv.alt = "上传预览";
+        pv.src = dataUrl;
+        pv.onerror = function () {
+          clearPreviewLayout(htmlPreview);
+          htmlPreview.classList.add("empty");
+          htmlPreview.textContent = "无法预览图片";
+        };
+        htmlPreview.appendChild(pv);
+        bindPreviewImageLayout(pv, htmlPreview);
+        htmlDownload.disabled = true;
+        htmlDownloadFormat.disabled = true;
+        htmlPngBlob = null;
+        if (htmlPngBlobUrl) {
+          URL.revokeObjectURL(htmlPngBlobUrl);
+          htmlPngBlobUrl = "";
+        }
+        if (kind === "compress") {
+          toast("已按压缩图生成 HTML，右侧已预览");
+        } else {
+          toast("已生成 HTML，右侧已预览");
+        }
       }
 
       document.getElementById("html-file").addEventListener("change", function (e) {
         var f = e.target.files && e.target.files[0];
-        if (f) imageFileToHtmlSnippet(f);
+        if (!f) return;
         e.target.value = "";
+        routeImageUpload(f, imageHtmlFromDataUrl);
       });
 
-      setupDrop("html-drop", "html-file", imageFileToHtmlSnippet);
+      setupDrop("html-drop", "html-file", function (f) {
+        routeImageUpload(f, imageHtmlFromDataUrl);
+      });
 
       /* SVG panel */
       var svgIn = document.getElementById("svg-in");
       var svgPreview = document.getElementById("svg-preview");
       var svgDownloadPng = document.getElementById("svg-download-png");
       var svgDownloadSvg = document.getElementById("svg-download-svg");
+      var svgDownloadFormat = document.getElementById("svg-download-format");
       var svgPngBlobUrl = "";
       var svgWrappedText = "";
 
@@ -777,16 +2360,17 @@
 
       document.getElementById("svg-to-png").addEventListener("click", function () {
         var text = svgIn.value.trim();
-        if (!text || !/^\s*<\s*svg/i.test(text)) {
-          toast("请输入完整 SVG 源码（以 <svg 开头）", true);
+        if (!text || !isLikelySvgDocument(text)) {
+          toast("请输入完整 SVG 源码（支持 <?xml 开头的文档）", true);
           return;
         }
+        showGlobalProgress("正在将 SVG 转为 PNG…", 14);
         var size = parseSvgSize(text);
         var blob = new Blob([text], { type: "image/svg+xml;charset=utf-8" });
         var url = URL.createObjectURL(blob);
         var img = new Image();
-        img.crossOrigin = "anonymous";
         img.onload = function () {
+          setGlobalProgress(42);
           try {
             var canvas = document.createElement("canvas");
             canvas.width = size.w;
@@ -794,50 +2378,57 @@
             var ctx = get2dContext(canvas);
             ctx.drawImage(img, 0, 0, size.w, size.h);
             URL.revokeObjectURL(url);
+            setGlobalProgress(68);
             canvas.toBlob(function (b) {
               if (svgPngBlobUrl) URL.revokeObjectURL(svgPngBlobUrl);
               svgPngBlobUrl = URL.createObjectURL(b);
+              clearPreviewLayout(svgPreview);
               svgPreview.classList.remove("empty");
               svgPreview.innerHTML = "";
               var out = document.createElement("img");
+              out.className = "preview-img";
               out.src = svgPngBlobUrl;
               out.alt = "svg raster";
               svgPreview.appendChild(out);
+              bindPreviewImageLayout(out, svgPreview);
               svgDownloadPng.disabled = false;
+              svgDownloadFormat.disabled = false;
+              setGlobalProgress(100);
+              hideGlobalProgressSoon();
               toast("已转为 PNG");
             }, "image/png");
           } catch (err) {
             URL.revokeObjectURL(url);
+            hideGlobalProgressImmediate();
             toast("SVG 转 PNG 失败", true);
           }
         };
         img.onerror = function () {
           URL.revokeObjectURL(url);
+          hideGlobalProgressImmediate();
           toast("SVG 无法解析或包含受限资源", true);
         };
         img.src = url;
       });
 
       document.getElementById("svg-copy").addEventListener("click", function () {
-        var t = svgIn.value.trim();
-        if (!t) {
-          toast("没有 SVG 内容", true);
-          return;
-        }
-        navigator.clipboard.writeText(t).then(function () {
-          toast("已复制 SVG 源码");
-        }).catch(function () {
-          toast("复制失败", true);
-        });
+        var t = (svgIn.value && svgIn.value.trim()) || (svgWrappedText && String(svgWrappedText).trim()) || "";
+        copyTextToClipboard(t, "已复制 SVG 源码", "没有 SVG 内容", undefined, { useProgressBar: true });
       });
 
       document.getElementById("svg-download-png").addEventListener("click", function () {
         if (!svgPngBlobUrl) return;
-        var a = document.createElement("a");
-        a.href = svgPngBlobUrl;
-        a.download = "from-svg.png";
-        a.click();
-        toast("已开始下载");
+        var fmt = svgDownloadFormat.value;
+        fetch(svgPngBlobUrl)
+          .then(function (r) {
+            return r.blob();
+          })
+          .then(function (blob) {
+            downloadImageBlobWithFormat(blob, fmt, "from-svg", {});
+          })
+          .catch(function () {
+            toast("无法读取栅格图", true);
+          });
       });
 
       document.getElementById("svg-download-svg").addEventListener("click", function () {
@@ -852,45 +2443,244 @@
         toast("已开始下载 SVG");
       });
 
-      function rasterToWrappedSvg(file) {
-        fileToDataUrl(file, function (dataUrl) {
-          var w = 800;
-          var h = 600;
-          var svgDoc =
-            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-            "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" " +
-            "width=\"" + w + "\" height=\"" + h + "\" viewBox=\"0 0 " + w + " " + h + "\">" +
-            "<image href=\"" + dataUrl + "\" xlink:href=\"" + dataUrl + "\" width=\"100%\" height=\"100%\" preserveAspectRatio=\"xMidYMid meet\" />" +
-            "</svg>";
-          svgWrappedText = svgDoc;
-          svgIn.value = svgDoc;
-          svgPreview.classList.remove("empty");
-          svgPreview.innerHTML = "";
-          var inner = svgDoc.replace(/^<\?xml[^>]*>\s*/i, "");
-          var blob = new Blob([inner], { type: "image/svg+xml;charset=utf-8" });
-          var prevUrl = URL.createObjectURL(blob);
-          var out = document.createElement("img");
-          out.alt = "wrapped svg preview";
-          out.src = prevUrl;
-          out.onload = function () { URL.revokeObjectURL(prevUrl); };
-          svgPreview.appendChild(out);
-          svgDownloadSvg.disabled = false;
-          if (svgPngBlobUrl) {
-            URL.revokeObjectURL(svgPngBlobUrl);
-            svgPngBlobUrl = "";
-          }
-          svgDownloadPng.disabled = true;
+      function rasterToWrappedSvgFromDataUrl(dataUrl, kind) {
+        var w = 800;
+        var h = 600;
+        var svgDoc =
+          "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+          "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" " +
+          "width=\"" + w + "\" height=\"" + h + "\" viewBox=\"0 0 " + w + " " + h + "\">" +
+          "<image href=\"" + dataUrl + "\" xlink:href=\"" + dataUrl + "\" width=\"100%\" height=\"100%\" preserveAspectRatio=\"xMidYMid meet\" />" +
+          "</svg>";
+        svgWrappedText = svgDoc;
+        svgIn.value = svgDoc;
+        clearPreviewLayout(svgPreview);
+        svgPreview.classList.remove("empty");
+        svgPreview.innerHTML = "";
+        var inner = svgDoc.replace(/^<\?xml[^>]*>\s*/i, "");
+        var blob = new Blob([inner], { type: "image/svg+xml;charset=utf-8" });
+        var prevUrl = URL.createObjectURL(blob);
+        var out = document.createElement("img");
+        out.className = "preview-img";
+        out.alt = "wrapped svg preview";
+        out.src = prevUrl;
+        out.onload = function () {
+          URL.revokeObjectURL(prevUrl);
+        };
+        svgPreview.appendChild(out);
+        bindPreviewImageLayout(out, svgPreview);
+        svgDownloadSvg.disabled = false;
+        if (svgPngBlobUrl) {
+          URL.revokeObjectURL(svgPngBlobUrl);
+          svgPngBlobUrl = "";
+        }
+        svgDownloadPng.disabled = true;
+        svgDownloadFormat.disabled = true;
+        if (kind === "compress") {
+          toast("已按压缩图生成嵌入位图的 SVG");
+        } else {
           toast("已生成嵌入位图的 SVG");
-        });
+        }
       }
 
       document.getElementById("svg-file").addEventListener("change", function (e) {
         var f = e.target.files && e.target.files[0];
-        if (f) rasterToWrappedSvg(f);
+        if (!f) return;
         e.target.value = "";
+        routeImageUpload(f, rasterToWrappedSvgFromDataUrl);
       });
 
-      setupDrop("svg-drop", "svg-file", rasterToWrappedSvg);
+      setupDrop("svg-drop", "svg-file", function (f) {
+        routeImageUpload(f, rasterToWrappedSvgFromDataUrl);
+      });
+
+      /* 格式互转 */
+      var convertPreview = document.getElementById("convert-preview");
+      var convertDownloadBtn = document.getElementById("convert-download");
+      var convertDataUrl = "";
+
+      function finishConvertUpload(dataUrl, kind) {
+        convertDataUrl = dataUrl;
+        clearPreviewLayout(convertPreview);
+        convertPreview.classList.remove("empty");
+        convertPreview.innerHTML = "";
+        var img = document.createElement("img");
+        img.className = "preview-img";
+        img.alt = "格式互转预览";
+        img.src = dataUrl;
+        img.onerror = function () {
+          clearPreviewLayout(convertPreview);
+          convertPreview.classList.add("empty");
+          convertPreview.textContent = "无法预览图片";
+          convertDownloadBtn.disabled = true;
+          convertDataUrl = "";
+        };
+        convertPreview.appendChild(img);
+        bindPreviewImageLayout(img, convertPreview);
+        convertDownloadBtn.disabled = false;
+        if (kind === "compress") {
+          toast("已载入图片（压缩）");
+        } else {
+          toast("已载入图片");
+        }
+      }
+
+      document.getElementById("convert-file").addEventListener("change", function (e) {
+        var f = e.target.files && e.target.files[0];
+        if (!f) return;
+        e.target.value = "";
+        routeImageUpload(f, finishConvertUpload);
+      });
+
+      setupDrop("convert-drop", "convert-file", function (f) {
+        routeImageUpload(f, finishConvertUpload);
+      });
+
+      document.getElementById("convert-download").addEventListener("click", function () {
+        if (!convertDataUrl) return;
+        var fmt = document.getElementById("convert-format").value;
+        var maxEdge = document.getElementById("convert-max-edge").value.trim();
+        var quality = document.getElementById("convert-quality").value.trim();
+        downloadImageDataUrlWithFormat(convertDataUrl, fmt, "converted", {
+          maxEdge: maxEdge || undefined,
+          quality: quality || undefined,
+        });
+      });
+
+      var HLPH = "\uE000";
+
+      function escApiHtml(t) {
+        return String(t)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      function hlApiJs(code) {
+        var ph = [];
+        function push(html) {
+          ph.push(html);
+          return HLPH + "H" + (ph.length - 1) + HLPH;
+        }
+        var s = escApiHtml(code);
+        s = s.replace(/`[^`]*`/g, function (m) {
+          return push('<span class="tok-string">' + m + "</span>");
+        });
+        s = s.replace(/"([^"\\]|\\.)*"/g, function (m) {
+          return push('<span class="tok-string">' + m + "</span>");
+        });
+        s = s.replace(/'([^'\\]|\\.)*'/g, function (m) {
+          return push('<span class="tok-string">' + m + "</span>");
+        });
+        s = s.replace(/\b(const|let|var|async|await|function|return|typeof|new)\b/g, '<span class="tok-keyword">$&</span>');
+        s = s.replace(/\b(require|fetch|console|JSON|FormData|Blob|Buffer)\b/g, '<span class="tok-global">$&</span>');
+        s = s.replace(/\b(readFileSync|writeFileSync|stringify)\b/g, '<span class="tok-func">$&</span>');
+        s = s.replace(/\b(method|headers|body)\b/g, '<span class="tok-prop">$&</span>');
+        s = s.replace(new RegExp(HLPH + "H(\\d+)" + HLPH, "g"), function (_, i) {
+          return ph[parseInt(i, 10)];
+        });
+        return s;
+      }
+
+      function hlApiPy(code) {
+        var ph = [];
+        function push(html) {
+          ph.push(html);
+          return HLPH + "H" + (ph.length - 1) + HLPH;
+        }
+        var s = escApiHtml(code);
+        s = s.replace(/"""[\s\S]*?"""/g, function (m) {
+          return push('<span class="tok-string">' + m + "</span>");
+        });
+        s = s.replace(/'''[\s\S]*?'''/g, function (m) {
+          return push('<span class="tok-string">' + m + "</span>");
+        });
+        s = s.replace(/"([^"\\]|\\.)*"/g, function (m) {
+          return push('<span class="tok-string">' + m + "</span>");
+        });
+        s = s.replace(/'([^'\\]|\\.)*'/g, function (m) {
+          return push('<span class="tok-string">' + m + "</span>");
+        });
+        s = s.replace(/(^|\s)(import|as|with|def|class|pass|return)\b/g, '$1<span class="tok-keyword">$2</span>');
+        s = s.replace(/\b(True|False|None)\b/g, '<span class="tok-const">$&</span>');
+        s = s.replace(/\b(requests|open|print|json)\b/g, '<span class="tok-builtin">$&</span>');
+        s = s.replace(/(#.*)$/gm, '<span class="tok-comment">$1</span>');
+        s = s.replace(new RegExp(HLPH + "H(\\d+)" + HLPH, "g"), function (_, i) {
+          return ph[parseInt(i, 10)];
+        });
+        return s;
+      }
+
+      function hlApiCurl(code) {
+        var s = escApiHtml(code);
+        s = s.replace(/\bcurl\b/g, '<span class="tok-command">curl</span>');
+        s = s.replace(/^(BASE=[^\n]+)/gm, '<span class="tok-meta">$1</span>');
+        s = s.replace(/(&lt;&lt;[^<\n]+)/g, '<span class="tok-heredoc">$1</span>');
+        s = s.replace(/(https?:\/\/[^\s"'<>]+)/g, '<span class="tok-uri">$1</span>');
+        s = s.replace(/(\s)(-[a-zA-Z][a-zA-Z0-9-]*)(?=\s|$)/gm, "$1<span class=\"tok-flag\">$2</span>");
+        s = s.replace(/(\$[A-Za-z_][A-Za-z0-9_]*)/g, '<span class="tok-var">$1</span>');
+        s = s.replace(/(-d)\s+('[^']*')/g, '$1 <span class="tok-string">$2</span>');
+        s = s.replace(/(-[FH])\s+("(?:[^"\\]|\\.)*")/g, '$1 <span class="tok-string">$2</span>');
+        s = s.replace(/(\s)("[^"]+")(\s*\\?\s*)$/gm, '$1<span class="tok-string">$2</span>$3');
+        return s;
+      }
+
+      function highlightApiCodeBlocks() {
+        document.querySelectorAll("#panel-api pre.api-ex").forEach(function (pre) {
+          if (pre.getAttribute("data-api-hl") === "1") return;
+          pre.setAttribute("data-api-hl", "1");
+          var raw = pre.textContent;
+          var html;
+          if (pre.classList.contains("api-ex-nodejs")) {
+            html = hlApiJs(raw);
+          } else if (pre.classList.contains("api-ex-python")) {
+            html = hlApiPy(raw);
+          } else {
+            html = hlApiCurl(raw);
+          }
+          pre.innerHTML = html;
+        });
+      }
+
+      highlightApiCodeBlocks();
+
+      (function initApiExampleLang() {
+        var sel = document.getElementById("api-example-lang");
+        if (!sel) return;
+        function apply() {
+          var v = sel.value;
+          document.querySelectorAll("#panel-api .api-code-block").forEach(function (el) {
+            el.classList.toggle("is-active", el.classList.contains("api-ex-" + v));
+          });
+        }
+        sel.addEventListener("change", apply);
+        apply();
+      })();
+
+      (function initApiCodeCopy() {
+        var panel = document.getElementById("panel-api");
+        if (!panel) return;
+        var copyTimer;
+        panel.addEventListener("click", function (e) {
+          var btn = e.target.closest(".api-copy-btn");
+          if (!btn || !panel.contains(btn)) return;
+          var block = btn.closest(".api-code-block");
+          if (!block) return;
+          var pre = block.querySelector("pre.api-ex");
+          if (!pre) return;
+          var prevLabel = btn.textContent;
+          copyTextToClipboard(pre.textContent, "示例代码已复制", "没有可复制的内容", function (ok) {
+            if (!ok) return;
+            btn.classList.add("is-copied");
+            btn.textContent = "已复制";
+            clearTimeout(copyTimer);
+            copyTimer = setTimeout(function () {
+              btn.classList.remove("is-copied");
+              btn.textContent = prevLabel;
+            }, 1600);
+          }, { useProgressBar: true });
+        });
+      })();
     })();
   </script>
 </body>
